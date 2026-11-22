@@ -1,6 +1,6 @@
 -- ChatBanner: loot summary. Inside a dungeon or raid it notes who received a
 -- green (uncommon) or better item; when you leave, it shows who got what,
--- from the lowest quality chosen in the options (db.lootMinQuality) upwards.
+-- from the lowest quality chosen in the options (db.lootMinQuality, blue by default) upwards.
 local _, ns = ...
 local CB = ns.CB
 
@@ -15,7 +15,7 @@ CB.LOOT_QUALITIES = {
 
 local function qualityLabel(q)
   for _, o in ipairs(CB.LOOT_QUALITIES) do if o.key == q then return o.short end end
-  return CB.LOOT_QUALITIES[1].short
+  return CB.LOOT_QUALITIES[2].short
 end
 
 -- Quality from the colour of an item link, for items the client has not cached yet.
@@ -95,7 +95,7 @@ local LOOT_INFO = { source = "loot", tag = "Loot", chat = "LOOT" }
 
 function CB:LootSummaryLines(run)
   -- group the items per player, in the order they first got something
-  local min = self.db.lootMinQuality or 2
+  local min = self.db.lootMinQuality or 3
   local players, byName = {}, {}
   for _, item in ipairs(run.items) do
     if (item.q or 3) >= min then

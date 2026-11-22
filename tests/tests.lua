@@ -411,7 +411,12 @@ test("loot lines are read with who got which item", function()
   check(CB.ItemQuality(BLUE) == 3 and CB.ItemQuality(PURPLE) == 4 and CB.ItemQuality(GREEN) == 2, "quality from colour")
 end)
 
-test("leaving a dungeon shows who got green or better items", function()
+test("blue and better is the default for the loot summary", function()
+  check(CB.db.lootMinQuality == 3, "blue by default")
+end)
+
+test("leaving a dungeon shows who got which items", function()
+  CB.db.lootMinQuality = 2
   enterDungeon("Wailing Caverns")
   Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. BLUE .. ".")
   Fire("CHAT_MSG_LOOT", "Lisa receives loot: " .. GREEN .. ".")
@@ -430,7 +435,7 @@ test("leaving a dungeon shows who got green or better items", function()
   check(bram and msgOf(bram):find("Ironfoe", 1, true) and msgOf(bram):find("Archeus", 1, true),
     "Bram's two items in one alert")
   check(find("Aztek"), "your own item under your name")
-  check(find("Gnoll Hide"), "green items included by default")
+  check(find("Gnoll Hide"), "green items included when chosen")
   check(CB.db.lootRun == nil and CB.db.lastLoot.name == "Wailing Caverns", "run finished and kept")
   Printed = {}
   SlashCmdList.CHATBANNER("loot")
@@ -447,17 +452,17 @@ test("the options choose the lowest quality in the loot summary", function()
   CB:RefreshOptions()
   local dd
   for _, f in ipairs(AllFrames) do
-    if f.init and f.text == "Green (uncommon) and better" then dd = f end
+    if f.init and f.text == "Blue (rare) and better" then dd = f end
   end
-  check(dd, "dropdown shown with green as default")
+  check(dd, "dropdown shown with blue as default")
   local added = {}
   local real = UIDropDownMenu_AddButton
   UIDropDownMenu_AddButton = function(info) added[#added + 1] = info end
   dd.init(dd, 1)
   UIDropDownMenu_AddButton = real
   check(#added == 3, "green, blue and purple")
-  added[2].func()
-  check(CB.db.lootMinQuality == 3 and dd.text == "Blue (rare) and better", "blue chosen")
+  added[1].func()
+  check(CB.db.lootMinQuality == 2 and dd.text == "Green (uncommon) and better", "green chosen")
 end)
 
 test("dying and running back does not end the dungeon", function()

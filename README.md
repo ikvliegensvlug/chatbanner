@@ -12,7 +12,7 @@ Chat scrolls by fast in combat, while questing or when you look away for a momen
 - **Click to reply**: left-click an alert to answer in the same channel (or whisper back), right-click to dismiss it.
 - **Fits any screen**: set the width, row height (or let it follow the font size), scale, number of alerts and how long they stay. Drag them anywhere and let them grow up or down.
 - **Your style**: font, font size, background opacity, border style, channel label on or off, coloured or white text, optional sound.
-- **Loot summary**: when you leave a dungeon or raid, see who got which items, on screen and in chat. Green and better by default; choose blue or purple and better in the options.
+- **Loot summary**: when you leave a dungeon or raid, see who got which items, on screen and in chat. Blue and better by default; choose green or purple and better in the options.
 - **Respects your chat filters**: messages that Blizzard or other add-ons hide from your chat (spam filters, for example) don't become alerts either.
 - Light and self-contained: no libraries, no other add-ons needed.
 
