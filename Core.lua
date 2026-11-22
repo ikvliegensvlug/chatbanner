@@ -88,6 +88,9 @@ CB.Merge = merge
 
 -- What changed per version, shown once in chat after an update (newest first).
 CB.NEWS = {
+  { version = "1.0.3", notes = {
+    "The 'Follow the font size' option now sits right under the Row height slider it controls.",
+  } },
   { version = "1.0.2", notes = {
     "After an update, ChatBanner now tells you in chat what changed (/chatbanner news shows it again).",
     "The row height follows the font size (option), so larger text always fits.",

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3
+
+- The **Follow the font size** option now sits right under the **Row height** slider it controls.
+
 ## 1.0.2
 
 - After an update, ChatBanner tells you in chat what changed. `/chatbanner news` shows it again.
