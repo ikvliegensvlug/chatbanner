@@ -411,7 +411,7 @@ test("loot lines are read with who got which item", function()
   check(CB.ItemQuality(BLUE) == 3 and CB.ItemQuality(PURPLE) == 4 and CB.ItemQuality(GREEN) == 2, "quality from colour")
 end)
 
-test("leaving a dungeon shows who got blue or better items", function()
+test("leaving a dungeon shows who got green or better items", function()
   enterDungeon("Wailing Caverns")
   Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. BLUE .. ".")
   Fire("CHAT_MSG_LOOT", "Lisa receives loot: " .. GREEN .. ".")
@@ -420,7 +420,7 @@ test("leaving a dungeon shows who got blue or better items", function()
   check(#alerts() == 0, "nothing during the dungeon")
   leaveDungeon()
   local list = alerts()
-  check(#list == 3, "summary and two players, got " .. #list)
+  check(#list == 4, "summary and three players, got " .. #list)
   local function find(s)
     for _, a in ipairs(list) do if msgOf(a):find(s, 1, true) then return a end end
   end
@@ -430,11 +430,34 @@ test("leaving a dungeon shows who got blue or better items", function()
   check(bram and msgOf(bram):find("Ironfoe", 1, true) and msgOf(bram):find("Archeus", 1, true),
     "Bram's two items in one alert")
   check(find("Aztek"), "your own item under your name")
-  for _, a in ipairs(list) do check(not msgOf(a):find("Gnoll Hide", 1, true), "green items left out") end
+  check(find("Gnoll Hide"), "green items included by default")
   check(CB.db.lootRun == nil and CB.db.lastLoot.name == "Wailing Caverns", "run finished and kept")
   Printed = {}
   SlashCmdList.CHATBANNER("loot")
-  check(#Printed == 3 and Printed[2]:find("Bram", 1, true), "/chatbanner loot repeats it in chat")
+  check(#Printed == 4 and Printed[2]:find("Bram", 1, true), "/chatbanner loot repeats it in chat")
+  check(Printed[1]:find("green or better", 1, true), "names the chosen quality")
+  CB.db.lootMinQuality = 3
+  Printed = {}
+  SlashCmdList.CHATBANNER("loot")
+  check(#Printed == 3 and not table.concat(Printed):find("Gnoll Hide", 1, true), "blue and better: green left out")
+  check(Printed[1]:find("blue or better", 1, true), "names blue")
+end)
+
+test("the options choose the lowest quality in the loot summary", function()
+  CB:RefreshOptions()
+  local dd
+  for _, f in ipairs(AllFrames) do
+    if f.init and f.text == "Green (uncommon) and better" then dd = f end
+  end
+  check(dd, "dropdown shown with green as default")
+  local added = {}
+  local real = UIDropDownMenu_AddButton
+  UIDropDownMenu_AddButton = function(info) added[#added + 1] = info end
+  dd.init(dd, 1)
+  UIDropDownMenu_AddButton = real
+  check(#added == 3, "green, blue and purple")
+  added[2].func()
+  check(CB.db.lootMinQuality == 3 and dd.text == "Blue (rare) and better", "blue chosen")
 end)
 
 test("dying and running back does not end the dungeon", function()
@@ -451,11 +474,18 @@ test("dying and running back does not end the dungeon", function()
   UnitIsDeadOrGhost = nil
 end)
 
-test("no summary without rare items or with the option off", function()
+test("no summary below the chosen quality or with the option off", function()
+  CB.db.lootMinQuality = 3
   enterDungeon("Ragefire Chasm")
   Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. GREEN .. ".")
+  Fire("CHAT_MSG_LOOT", "Bram receives loot: |cff9d9d9d|Hitem:1::::::::|h[Broken Fang]|h|r.")
   leaveDungeon()
   check(#alerts() == 0, "nothing worth a summary")
+  CB.db.lootMinQuality = 2
+  Printed = {}
+  SlashCmdList.CHATBANNER("loot")
+  check(Printed[2] and Printed[2]:find("Gnoll Hide", 1, true) and not Printed[2]:find("Broken Fang", 1, true),
+    "green kept for later, grey never")
   CB.db.lootSummary = false
   enterDungeon("Ragefire Chasm")
   Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. BLUE .. ".")

@@ -60,7 +60,8 @@ CB.defaults = {
   -- behaviour
   sound = false,
   ignoreOwn = true,
-  lootSummary = true,     -- after a dungeon: who got blue or better items
+  lootSummary = true,     -- after a dungeon: who got which items
+  lootMinQuality = 2,     -- lowest quality in that summary: 2 green, 3 blue, 4 purple
   sources = {
     whisper = true, party = true, raid = true, guild = true, officer = true,
     say = true, yell = true, emote = true, channel = true, npc = true,
@@ -95,7 +96,7 @@ CB.Merge = merge
 CB.NEWS = {
   { version = "1.0.5", notes = {
     "New source: loot rolls. An alert when an item comes up for a roll, and one for who won it. Other loot lines stay in your chat. Switch it off under Loot rolls.",
-    "Loot summary: when you leave a dungeon or raid, ChatBanner shows who got blue or better items (/chatbanner loot shows it again).",
+    "Loot summary: when you leave a dungeon or raid, ChatBanner shows who got green or better items. Choose blue or purple instead in the options; /chatbanner loot shows it again.",
   } },
   { version = "1.0.4", notes = {
     "New quick setup with the most important choices: where the alerts go and which messages get one (/chatbanner setup).",
@@ -198,7 +199,7 @@ local HELP = {
   "/chatbanner unlock  - move and resize the alerts (lock to finish)",
   "/chatbanner reset  - restore all default settings",
   "/chatbanner news  - show what changed in recent versions",
-  "/chatbanner loot  - who got blue or better items in the last dungeon",
+  "/chatbanner loot  - who got which items in the last dungeon",
 }
 
 SLASH_CHATBANNER1 = "/chatbanner"

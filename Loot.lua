@@ -1,9 +1,22 @@
 -- ChatBanner: loot summary. Inside a dungeon or raid it notes who received a
--- blue (rare) or better item; when you leave, it shows who got what.
+-- green (uncommon) or better item; when you leave, it shows who got what,
+-- from the lowest quality chosen in the options (db.lootMinQuality) upwards.
 local _, ns = ...
 local CB = ns.CB
 
-local MIN_QUALITY = 3   -- 3 = rare (blue), 4 = epic, 5 = legendary
+local KEEP_QUALITY = 2  -- noted during the run: 2 = uncommon (green) and up
+
+-- Choices for the lowest quality in the summary, as the options show them.
+CB.LOOT_QUALITIES = {
+  { key = 2, label = "Green (uncommon) and better", short = "green or better" },
+  { key = 3, label = "Blue (rare) and better",      short = "blue or better" },
+  { key = 4, label = "Purple (epic) and better",    short = "purple or better" },
+}
+
+local function qualityLabel(q)
+  for _, o in ipairs(CB.LOOT_QUALITIES) do if o.key == q then return o.short end end
+  return CB.LOOT_QUALITIES[1].short
+end
 
 -- Quality from the colour of an item link, for items the client has not cached yet.
 local QUALITY_COLOURS = {
@@ -82,13 +95,16 @@ local LOOT_INFO = { source = "loot", tag = "Loot", chat = "LOOT" }
 
 function CB:LootSummaryLines(run)
   -- group the items per player, in the order they first got something
+  local min = self.db.lootMinQuality or 2
   local players, byName = {}, {}
   for _, item in ipairs(run.items) do
-    if not byName[item.who] then
-      byName[item.who] = {}
-      players[#players + 1] = item.who
+    if (item.q or 3) >= min then
+      if not byName[item.who] then
+        byName[item.who] = {}
+        players[#players + 1] = item.who
+      end
+      table.insert(byName[item.who], item.link)
     end
-    table.insert(byName[item.who], item.link)
   end
   local lines = {}
   for _, who in ipairs(players) do
@@ -98,13 +114,15 @@ function CB:LootSummaryLines(run)
 end
 
 -- Print the summary in chat; with alert = true also show it on screen.
+-- Returns false when nothing reaches the chosen quality.
 function CB:ShowLootSummary(run, alert)
-  if not run or #run.items == 0 then
-    self:Print("No blue or better items in the last dungeon.")
-    return
+  local which = qualityLabel(self.db.lootMinQuality)
+  local lines = run and self:LootSummaryLines(run) or {}
+  if #lines == 0 then
+    if not alert then self:Print("No " .. which .. " items in the last dungeon.") end
+    return false
   end
-  local lines = self:LootSummaryLines(run)
-  self:Print("|cffffd100Loot from " .. run.name .. "|r (blue or better)")
+  self:Print("|cffffd100Loot from " .. run.name .. "|r (" .. which .. ")")
   for _, l in ipairs(lines) do self:Print("  " .. l.who .. ": " .. l.items) end
   if alert then
     -- the newest alert ends up on top, so show the players last to first
@@ -113,6 +131,7 @@ function CB:ShowLootSummary(run, alert)
     end
     self:Show(LOOT_INFO, run.name .. " done: who got what", nil, { duration = 30, tag = "Summary" })
   end
+  return true
 end
 
 function CB:FinishLootRun()
@@ -143,10 +162,12 @@ function CB:NoteLoot(text)
   local run = self.db.lootRun
   if not run then return end
   local who, link = parseLoot(text)
-  if not link or quality(link) < MIN_QUALITY then return end
+  if not link then return end
+  local q = quality(link)
+  if q < KEEP_QUALITY then return end
   if not who then who = UnitName("player") or "You" end
   who = (Ambiguate and Ambiguate(who, "short")) or who
-  table.insert(run.items, { who = who, link = link })
+  table.insert(run.items, { who = who, link = link, q = q })
 end
 
 local ev = CreateFrame("Frame")
