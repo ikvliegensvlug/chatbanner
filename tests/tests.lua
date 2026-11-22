@@ -153,6 +153,7 @@ end)
 
 test("layout settings resize the alerts", function()
   CB.db.width, CB.db.rowHeight, CB.db.scale = 900, 50, 1.5
+  CB.db.autoHeight = false
   CB:ApplyLayout()
   local holder = _G.ChatBannerFrame
   check(holder.w == 900 and holder.scale == 1.5, "holder size/scale")
@@ -191,9 +192,9 @@ test("options panel controls change the settings", function()
     if f.kind == "Slider" then sliders[#sliders + 1] = f end
     if f.kind == "CheckButton" then boxes[#boxes + 1] = f end
   end
-  check(#sliders == 7, "7 sliders, got " .. #sliders)
-  -- grow upwards + one per source + label, colour, sound, own messages
-  check(#boxes == 1 + #CB.SOURCES + 4, "checkboxes, got " .. #boxes)
+  check(#sliders == 8, "8 sliders, got " .. #sliders)
+  -- grow upwards + one per source + row height follows font, label, colour, sound, own messages
+  check(#boxes == 1 + #CB.SOURCES + 5, "checkboxes, got " .. #boxes)
   CB:RefreshOptions()
   check(sliders[1].value == 600, "width slider shows the setting")
   sliders[1]:SetValue(803)          -- snaps to the 10-step
@@ -212,6 +213,50 @@ test("reset restores every default", function()
   CB.db.sources.system = false
   SlashCmdList.CHATBANNER("reset")
   check(CB.db.width == 600 and CB.db.sources.system == true, "defaults back")
+end)
+
+test("row height follows the font size by default", function()
+  check(CB:RowHeight() == 34, "default row 34, got " .. CB:RowHeight())
+  CB.db.fontSize = 28
+  CB:ApplyLayout()
+  Fire("CHAT_MSG_SAY", "big text", "A")
+  local a = alerts()[1]
+  check(a.h == 67, "row grows with the font, got " .. a.h)
+  check(a.tagBox.h >= CB:LabelSize() + 6 and a.tagBox.h <= a.h - 4, "label box fits in the row")
+  check(a.tagBox.w > a.tag:GetStringWidth() + CB:LabelSize(), "label box wider than its text")
+  check(_G.ChatBannerFrame.h == (67 + 6) * CB.db.maxAlerts, "holder fits all rows")
+end)
+
+test("a fixed row height never cuts off the text", function()
+  CB.db.autoHeight, CB.db.rowHeight, CB.db.fontSize = false, 20, 24
+  CB:ApplyLayout()
+  Fire("CHAT_MSG_GUILD", "hello", "A")
+  local a = alerts()[1]
+  check(a.h >= 24 + 8, "row at least font + padding, got " .. a.h)
+  check(a.tagBox.h <= a.h - 4, "label box inside the row")
+end)
+
+test("label size scales the label and its box", function()
+  Fire("CHAT_MSG_GUILD", "hello", "A")
+  local a = alerts()[1]
+  local smallW = a.tagBox.w
+  CB.db.tagScale = 1.5
+  CB:ApplyLayout()
+  check(CB:LabelSize() == 21, "label size 21, got " .. CB:LabelSize())
+  check(a.tagBox.w > smallW, "label box grows with the label")
+end)
+
+test("row height slider is greyed out while it follows the font", function()
+  local sliders = {}
+  for _, f in ipairs(AllFrames) do
+    if f.kind == "Slider" then sliders[#sliders + 1] = f end
+  end
+  CB:RefreshOptions()
+  local row = sliders[2]
+  check(row.disabled == true, "disabled with autoHeight")
+  CB.db.autoHeight = false
+  CB:RefreshOptions()
+  check(not row.disabled, "enabled without autoHeight")
 end)
 
 local function printedText() return table.concat(Printed, "\n") end

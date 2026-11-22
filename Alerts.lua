@@ -117,16 +117,35 @@ end
 ---------------------------------------------------------------------------
 -- One alert
 ---------------------------------------------------------------------------
+-- Size of the label text (channel tag and age), following the font size.
+function CB:LabelSize()
+  return math.max(6, math.floor(self.db.fontSize * self.db.tagScale + 0.5))
+end
+
+-- Height of one alert. Never smaller than what the text and label need;
+-- with autoHeight it grows and shrinks along with the font size.
+function CB:RowHeight()
+  local db = self.db
+  local needed = math.max(db.fontSize, self:LabelSize() + 8) + 8
+  if db.autoHeight then
+    return math.max(needed, math.floor(db.fontSize * 2.4 + 0.5))
+  end
+  return math.max(needed, db.rowHeight)
+end
+
 local function styleAlert(t)
   local db = CB.db
-  local font, size = fontPath(), db.fontSize
-  t:SetSize(db.width, db.rowHeight)
+  local font, size, label = fontPath(), db.fontSize, CB:LabelSize()
+  local rowH = CB:RowHeight()
+  t:SetSize(db.width, rowH)
   t.bg:SetVertexColor(0, 0, 0, db.bgAlpha)
   restEdge(t)
-  t.tag:SetFont(font, math.max(8, size - 3), "")
+  t.tag:SetFont(font, label, "")
   t.msg:SetFont(font, size, "")
-  t.age:SetFont(font, math.max(8, size - 3), "")
-  t.tagBox:SetHeight(math.max(12, db.rowHeight - 12))
+  t.age:SetFont(font, label, "")
+  -- the label box hugs its text, so it fits at every font and label size
+  t.tagBox:SetHeight(math.min(rowH - 4, label + 10))
+  t.tagBox:SetWidth(t.tag:GetStringWidth() + label + 4)
   t.tagBox:SetShown(db.showTag)
   t.msg:ClearAllPoints()
   if db.showTag then
@@ -134,7 +153,7 @@ local function styleAlert(t)
   else
     t.msg:SetPoint("LEFT", t, "LEFT", 12, 0)
   end
-  t.msg:SetPoint("RIGHT", t, "RIGHT", -48, 0)
+  t.msg:SetPoint("RIGHT", t, "RIGHT", -(14 + math.ceil(label * 3)), 0)
 end
 
 local function makeAlert()
@@ -175,7 +194,7 @@ local function makeAlert()
 end
 
 local function stack()
-  local step = CB.db.rowHeight + GAP
+  local step = CB:RowHeight() + GAP
   for i, t in ipairs(active) do
     t:ClearAllPoints()
     if CB.db.growUp then
@@ -223,7 +242,7 @@ function CB:Show(info, text, sender, extra)
   t.r, t.g, t.b = r, g, b
   t.tag:SetText((extra and extra.tag) or info.tag)
   t.tag:SetTextColor(r, g, b)
-  t.tagBox:SetWidth(t.tag:GetStringWidth() + 14)
+  t.tagBox:SetWidth(t.tag:GetStringWidth() + self:LabelSize() + 4)
   edgeColor(t.tagBox, r, g, b, 0.9)
   restEdge(t)
 
@@ -318,7 +337,7 @@ end
 function CB:ApplyLayout()
   local db = self.db
   holder:SetScale(db.scale)
-  holder:SetSize(db.width, (db.rowHeight + GAP) * db.maxAlerts)
+  holder:SetSize(db.width, (self:RowHeight() + GAP) * db.maxAlerts)
   holder:ClearAllPoints()
   local p = db.position
   if p then

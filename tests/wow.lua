@@ -33,6 +33,8 @@ end
 function Methods:SetSize(w, h) self.w, self.h = w, h end
 function Methods:SetWidth(w) self.w = w end
 function Methods:SetHeight(h) self.h = h end
+function Methods:Disable() self.disabled = true end
+function Methods:Enable() self.disabled = false end
 function Methods:GetWidth() return self.w end
 function Methods:GetHeight() return self.h end
 function Methods:Show() self.shown = true end

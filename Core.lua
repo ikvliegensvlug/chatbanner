@@ -42,7 +42,8 @@ CB.defaults = {
   -- position and size
   position = false,       -- false = default spot; otherwise { point, relPoint, x, y }
   width = 600,
-  rowHeight = 34,
+  rowHeight = 34,         -- used when autoHeight is off
+  autoHeight = true,      -- row height follows the font size
   scale = 1,
   maxAlerts = 5,
   duration = 10,
@@ -50,6 +51,7 @@ CB.defaults = {
   -- style
   font = "friz",
   fontSize = 14,
+  tagScale = 0.8,         -- label text size, relative to the font size
   bgAlpha = 0.9,
   border = "subtle",
   showTag = true,
@@ -89,6 +91,8 @@ CB.Merge = merge
 CB.NEWS = {
   { version = "1.0.2", notes = {
     "After an update, ChatBanner now tells you in chat what changed (/chatbanner news shows it again).",
+    "The row height follows the font size (option), so larger text always fits.",
+    "New Label size slider; the channel label box now always fits its text.",
   } },
   { version = "1.0.1", notes = {
     "Scrolling the options panel no longer changes a slider when the mouse passes over it.",

@@ -79,6 +79,10 @@ local function slider(label, x, y, min, max, step, format, get, set)
     s:SetValue(get())
     s.updating = false
     value:SetText(format(get()))
+    -- optional f.enabled(): greys the slider out when it does not apply
+    local on = not f.enabled or f.enabled()
+    if on then s:Enable() else s:Disable() end
+    f:SetAlpha(on and 1 or 0.45)
   end
   return add(f)
 end
@@ -145,7 +149,10 @@ end
 local function setting(key, relayout)
   return function() return CB.db[key] end, function(v)
     CB.db[key] = v
-    if relayout then CB:ApplyLayout() end
+    if relayout then
+      CB:ApplyLayout()
+      CB:RefreshOptions()   -- e.g. the row height shown follows the font size
+    end
   end
 end
 
@@ -179,7 +186,10 @@ local function build()
   button("Show test alerts", COL1 + 300, y, 150, function() CB:Test() end)
   y = y - 40
   slider("Width", COL1, y, 250, 1400, 10, plain, setting("width", true))
-  slider("Row height", COL2, y, 20, 80, 1, plain, setting("rowHeight", true))
+  local _, setRow = setting("rowHeight", true)
+  local row = slider("Row height", COL2, y, 20, 80, 1, plain,
+    function() return CB:RowHeight() end, setRow)
+  row.enabled = function() return not CB.db.autoHeight end
   y = y - 50
   slider("Scale", COL1, y, 0.5, 2, 0.05, percent, setting("scale", true))
   slider("Alerts on screen at once", COL2, y, 1, 10, 1, plain, setting("maxAlerts", true))
@@ -219,6 +229,9 @@ local function build()
   dropdown("Border", COL1, y, CB.BORDERS, setting("border", true))
   slider("Background opacity", COL2, y, 0, 1, 0.05, percent, setting("bgAlpha", true))
   y = y - 56
+  slider("Label size", COL1, y, 0.5, 1.5, 0.05, percent, setting("tagScale", true))
+  checkbox("Row height follows the font size", COL2, y - 10, setting("autoHeight", true))
+  y = y - 50
   checkbox("Show the channel label", COL1, y, setting("showTag", true))
   checkbox("Colour the text like the chat type", COL2, y, setting("colorText"))
 

@@ -9,8 +9,8 @@ Chat scrolls by fast in combat, while questing or when you look away for a momen
 - **Alerts for every kind of chat**: whispers (including Battle.net), party, raid and raid warnings, guild, officer, say, yell, emotes, channels such as General, Trade and LFG, NPCs, boss emotes, battleground messages and system messages. Loot is never shown.
 - **Choose your sources**: switch each kind on or off in the options.
 - **Click to reply**: left-click an alert to answer in the same channel (or whisper back), right-click to dismiss it.
-- **Fits any screen**: set the width, row height, scale, number of alerts and how long they stay. Drag them anywhere and let them grow up or down.
-- **Your style**: font, font size, background opacity, border style, channel label on or off, coloured or white text, optional sound.
+- **Fits any screen**: set the width, row height (or let it follow the font size), scale, number of alerts and how long they stay. Drag them anywhere and let them grow up or down.
+- **Your style**: font, font size, label size, background opacity, border style, channel label on or off, coloured or white text, optional sound.
 - **Respects your chat filters**: messages that Blizzard or other add-ons hide from your chat (spam filters, for example) don't become alerts either.
 - Light and self-contained: no libraries, no other add-ons needed.
 
