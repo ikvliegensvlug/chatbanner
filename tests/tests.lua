@@ -214,5 +214,67 @@ test("reset restores every default", function()
   check(CB.db.width == 600 and CB.db.sources.system == true, "defaults back")
 end)
 
+local function printedText() return table.concat(Printed, "\n") end
+
+local function withVersion(v, fn)
+  local old = CB.version
+  CB.version = v
+  local ok, err = pcall(fn)
+  CB.version = old
+  if not ok then error(err, 0) end
+end
+
+test("versions compare number by number", function()
+  check(CB.CompareVersions("1.0.10", "1.0.9") == 1, "1.0.10 > 1.0.9")
+  check(CB.CompareVersions("1.0", "1.0.0") == 0, "1.0 == 1.0.0")
+  check(CB.CompareVersions("1.0.1", "1.0.2") == -1, "1.0.1 < 1.0.2")
+end)
+
+test("a new player gets a welcome line and no release notes", function()
+  withVersion("1.0.2", function()
+    ChatBannerDB.lastVersion = nil
+    CB:Announce(true)
+    check(printedText():find("Loaded", 1, true), "welcome shown")
+    check(not printedText():find("What's new", 1, true), "no notes for new players")
+    check(ChatBannerDB.lastVersion == "1.0.2", "version stored")
+  end)
+end)
+
+test("an update from 1.0.0 shows every note since then", function()
+  withVersion("1.0.2", function()
+    ChatBannerDB.lastVersion = nil       -- 1.0.0 did not store a version
+    CB:Announce(false)
+    local text = printedText()
+    check(text:find("Updated to 1.0.2", 1, true), "update line")
+    check(text:find("What's new in 1.0.2", 1, true), "1.0.2 notes")
+    check(text:find("What's new in 1.0.1", 1, true), "1.0.1 notes")
+  end)
+end)
+
+test("an update from 1.0.1 shows only the newer notes, once", function()
+  withVersion("1.0.2", function()
+    ChatBannerDB.lastVersion = "1.0.1"
+    CB:Announce(false)
+    check(printedText():find("What's new in 1.0.2", 1, true), "1.0.2 notes")
+    check(not printedText():find("What's new in 1.0.1", 1, true), "no old notes")
+    Printed = {}
+    CB:Announce(false)
+    check(#Printed == 0, "nothing on the next login")
+  end)
+end)
+
+test("/chatbanner news shows the notes again", function()
+  withVersion("1.0.2", function()
+    SlashCmdList.CHATBANNER("news")
+    check(printedText():find("What's new in 1.0.1", 1, true), "notes shown")
+  end)
+end)
+
+test("reset keeps the stored version", function()
+  ChatBannerDB.lastVersion = "0.9"
+  CB:ResetSettings()
+  check(ChatBannerDB.lastVersion == CB.version, "version kept after reset")
+end)
+
 print(string.format("\n%d passed, %d failed", passed, failed))
 if failed > 0 then error("tests failed") end

@@ -85,9 +85,60 @@ local function merge(db, defaults)
 end
 CB.Merge = merge
 
+-- What changed per version, shown once in chat after an update (newest first).
+CB.NEWS = {
+  { version = "1.0.2", notes = {
+    "After an update, ChatBanner now tells you in chat what changed (/chatbanner news shows it again).",
+  } },
+  { version = "1.0.1", notes = {
+    "Scrolling the options panel no longer changes a slider when the mouse passes over it.",
+  } },
+}
+
+-- -1, 0 or 1, comparing "1.2.10" style versions number by number.
+local function compareVersions(a, b)
+  local pa, pb = {}, {}
+  for n in tostring(a):gmatch("%d+") do pa[#pa + 1] = tonumber(n) end
+  for n in tostring(b):gmatch("%d+") do pb[#pb + 1] = tonumber(n) end
+  for i = 1, math.max(#pa, #pb) do
+    local x, y = pa[i] or 0, pb[i] or 0
+    if x ~= y then return x < y and -1 or 1 end
+  end
+  return 0
+end
+CB.CompareVersions = compareVersions
+
+-- Print the notes of every version newer than `since` (all notes when nil).
+function CB:ShowNews(since)
+  local shown = false
+  for _, entry in ipairs(self.NEWS) do
+    if (not since or compareVersions(entry.version, since) > 0)
+        and compareVersions(entry.version, self.version) <= 0 then
+      self:Print("|cffffd100What's new in " .. entry.version .. "|r")
+      for _, note in ipairs(entry.notes) do self:Print("  - " .. note) end
+      shown = true
+    end
+  end
+  return shown
+end
+
+-- On login: a welcome line for new players, the changes for updated ones.
+function CB:Announce(isNew)
+  local last = ChatBannerDB.lastVersion
+  if isNew then
+    self:Print("Loaded. Type /chatbanner for the options, /chatbanner test for a preview.")
+  elseif not last or compareVersions(last, self.version) < 0 then
+    -- No lastVersion means the player came from 1.0.0, which did not store it.
+    self:Print("Updated to " .. self.version .. ".")
+    self:ShowNews(last or "1.0.0")
+  end
+  ChatBannerDB.lastVersion = self.version
+end
+
 function CB:ResetSettings()
   wipe(ChatBannerDB)
   merge(ChatBannerDB, self.defaults)
+  ChatBannerDB.lastVersion = self.version
   self.db = ChatBannerDB
   if self.ApplyLayout then self:ApplyLayout() end
   if self.RefreshOptions then self:RefreshOptions() end
@@ -99,14 +150,17 @@ end
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("ADDON_LOADED")
 ev:RegisterEvent("PLAYER_LOGIN")
+local isNew = false
 ev:SetScript("OnEvent", function(_, event, name)
   if event == "ADDON_LOADED" and name == ADDON then
+    isNew = ChatBannerDB == nil
     ChatBannerDB = ChatBannerDB or {}
     merge(ChatBannerDB, CB.defaults)
     CB.db = ChatBannerDB
     CB:InitAlerts()
   elseif event == "PLAYER_LOGIN" then
     CB:InitOptions()
+    CB:Announce(isNew)
   end
 end)
 
@@ -118,6 +172,7 @@ local HELP = {
   "/chatbanner test  - show sample alerts",
   "/chatbanner unlock  - drag the alerts to a new spot (lock to finish)",
   "/chatbanner reset  - restore all default settings",
+  "/chatbanner news  - show what changed in recent versions",
 }
 
 SLASH_CHATBANNER1 = "/chatbanner"
@@ -135,6 +190,8 @@ SlashCmdList.CHATBANNER = function(msg)
   elseif cmd == "reset" then
     CB:ResetSettings()
     CB:Print("All settings restored to default.")
+  elseif cmd == "news" then
+    if not CB:ShowNews() then CB:Print("No release notes for this version.") end
   else
     for _, line in ipairs(HELP) do CB:Print(line) end
   end

@@ -23,6 +23,7 @@ Chat scrolls by fast in combat, while questing or when you look away for a momen
 | `/chatbanner unlock` | Drag the alerts to a new spot |
 | `/chatbanner lock` | Fix the position again |
 | `/chatbanner reset` | Restore all default settings |
+| `/chatbanner news` | Show what changed in recent versions (also shown once after each update) |
 
 You can also find the options under **Options > AddOns > ChatBanner**.
 

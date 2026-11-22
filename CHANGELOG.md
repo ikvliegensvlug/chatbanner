@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2
+
+- After an update, ChatBanner tells you in chat what changed. `/chatbanner news` shows it again.
+- New players get a short welcome line with the commands.
+
 ## 1.0.1
 
 - Scrolling the options panel no longer changes a slider when the mouse passes over it.
