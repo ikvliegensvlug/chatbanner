@@ -77,7 +77,7 @@ local function build()
 
   -- 1. Position
   text(frame, "GameFontNormal", 18, -70, "1.  Where should the alerts appear?")
-  frame.moveButton = button(frame, "Move the alerts", 140, function()
+  frame.moveButton = button(frame, "Move and resize", 140, function()
     CB:SetUnlocked(not CB.unlocked)
   end)
   frame.moveButton:SetPoint("TOPLEFT", 18, -92)
@@ -135,7 +135,7 @@ end
 function CB:RefreshSetup()
   if not frame then return end
   for i, group in ipairs(self.SETUP_GROUPS) do boxes[i]:SetChecked(groupOn(group)) end
-  frame.moveButton:SetText(self.unlocked and "Lock position" or "Move the alerts")
+  frame.moveButton:SetText(self.unlocked and "Done moving" or "Move and resize")
 end
 
 function CB:OpenSetup()

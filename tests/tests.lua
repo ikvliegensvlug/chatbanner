@@ -301,6 +301,33 @@ test("the setup points to the full options", function()
   closeSetup()
 end)
 
+test("the resize corner scales the alerts and keeps the top-left corner", function()
+  local holder = _G.ChatBannerFrame
+  CB.db.width = 600
+  CB:ApplyLayout()
+  CB:SetUnlocked(true)
+  holder.left, holder.top = 100, 800          -- top-left corner on screen, scale 1
+  local grip = CB.resizeGrip
+  grip.scripts.OnMouseDown(grip)
+  CursorX = 100 + 900                         -- drag the right edge to 1.5x the width
+  grip.scripts.OnUpdate(grip, 0)
+  check(CB.db.scale == 1.5, "scale 1.5, got " .. tostring(CB.db.scale))
+  check(holder.scale == 1.5, "holder scaled")
+  check(CB.db.width == 600 and CB:RowHeight() == 34, "width and rows keep their proportions")
+  local p = CB.db.position
+  check(p[1] == "TOPLEFT" and p[2] == "BOTTOMLEFT", "anchored at the top-left")
+  check(math.abs(p[3] * 1.5 - 100) < 1 and math.abs(p[4] * 1.5 - 800) < 1, "top-left corner stays put")
+  CursorX = 100 + 100                         -- far too small: clamped
+  grip.scripts.OnUpdate(grip, 0)
+  check(CB.db.scale == 0.5, "never below 50%, got " .. tostring(CB.db.scale))
+  CursorX = 100 + 5000
+  grip.scripts.OnUpdate(grip, 0)
+  check(CB.db.scale == 2, "never above 200%")
+  grip.scripts.OnMouseUp(grip)
+  check(CB.resizing == nil, "resize finished")
+  CB:SetUnlocked(false)
+end)
+
 test("/chatbanner setup opens it again", function()
   closeSetup()
   SlashCmdList.CHATBANNER("setup")

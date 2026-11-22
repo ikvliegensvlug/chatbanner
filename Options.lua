@@ -179,7 +179,7 @@ local function build()
   y = -84
   header("Position and size", y)
   y = y - 34
-  CB.unlockButton = button("Unlock to move", COL1, y, 150, function()
+  CB.unlockButton = button("Move and resize", COL1, y, 150, function()
     CB:SetUnlocked(not CB.unlocked)
   end)
   button("Reset position", COL1 + 160, y, 130, function() CB:ResetPosition() end)
@@ -253,7 +253,7 @@ function CB:RefreshOptions()
   if not panel then return end
   for _, w in ipairs(widgets) do w.Refresh() end
   if CB.unlockButton then
-    CB.unlockButton:SetText(CB.unlocked and "Lock position" or "Unlock to move")
+    CB.unlockButton:SetText(CB.unlocked and "Done moving" or "Move and resize")
   end
 end
 

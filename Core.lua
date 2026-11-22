@@ -92,6 +92,7 @@ CB.Merge = merge
 CB.NEWS = {
   { version = "1.0.4", notes = {
     "New quick setup with the most important choices: where the alerts go and which messages get one (/chatbanner setup).",
+    "Move and resize in one go: drag the box to move, drag its corner to resize. The proportions stay the same.",
     "Quest progress such as 'Kobold Vermin slain: 3/10' is now its own source and off by default, so killing mobs no longer gives alerts.",
   } },
   { version = "1.0.3", notes = {
@@ -185,7 +186,7 @@ local HELP = {
   "/chatbanner  - open the options",
   "/chatbanner setup  - the quick setup with the most important choices",
   "/chatbanner test  - show sample alerts",
-  "/chatbanner unlock  - drag the alerts to a new spot (lock to finish)",
+  "/chatbanner unlock  - move and resize the alerts (lock to finish)",
   "/chatbanner reset  - restore all default settings",
   "/chatbanner news  - show what changed in recent versions",
 }

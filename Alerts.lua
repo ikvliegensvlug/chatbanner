@@ -399,11 +399,48 @@ function CB:ResetPosition()
   self:ApplyLayout()
 end
 
+---------------------------------------------------------------------------
+-- Resizing: the corner grip changes the scale, so width, height, text and
+-- spacing all grow and shrink together. The top-left corner stays put.
+---------------------------------------------------------------------------
+local MIN_SCALE, MAX_SCALE = 0.5, 2
+
+local function cursorX()
+  local x = GetCursorPosition()
+  return x / UIParent:GetEffectiveScale()
+end
+
+function CB:StartResize()
+  local s = holder:GetScale()
+  -- top-left corner in UIParent units
+  self.resizing = { left = holder:GetLeft() * s, top = holder:GetTop() * s }
+end
+
+-- Scale so that the right edge lands at x (UIParent units).
+function CB:ResizeTo(x)
+  local r = self.resizing
+  if not r then return end
+  local s = (x - r.left) / self.db.width
+  s = math.max(MIN_SCALE, math.min(MAX_SCALE, s))
+  s = math.floor(s * 20 + 0.5) / 20               -- same 5% steps as the slider
+  self.db.scale = s
+  self.db.position = { "TOPLEFT", "BOTTOMLEFT",
+    math.floor(r.left / s + 0.5), math.floor(r.top / s + 0.5) }
+  self:ApplyLayout()
+end
+
+function CB:StopResize()
+  if not self.resizing then return end
+  self.resizing = nil
+  if self.RefreshOptions then self:RefreshOptions() end
+end
+
 function CB:SetUnlocked(on)
   self.unlocked = on and true or false
+  if not self.unlocked then self:StopResize() end
   mover:SetShown(self.unlocked)
   if self.unlocked then
-    self:Print("Drag the box to move the alerts. Type /chatbanner lock when done.")
+    self:Print("Drag the box to move the alerts, drag its corner to resize. Type /chatbanner lock when done.")
   end
   if self.RefreshOptions then self:RefreshOptions() end
   if self.RefreshSetup then self:RefreshSetup() end
@@ -432,7 +469,7 @@ function CB:InitAlerts()
   edgeColor(mover, 0.2, 0.6, 1, 1)
   local label = mover:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   label:SetPoint("CENTER")
-  label:SetText("ChatBanner: drag to move, /chatbanner lock to finish")
+  label:SetText("ChatBanner: drag to move, drag the corner to resize")
   mover:EnableMouse(true)
   mover:RegisterForDrag("LeftButton")
   mover:SetScript("OnDragStart", function() holder:StartMoving() end)
@@ -441,6 +478,24 @@ function CB:InitAlerts()
     local p, _, rp, x, y = holder:GetPoint()
     CB.db.position = { p, rp, math.floor(x + 0.5), math.floor(y + 0.5) }
   end)
+
+  -- resize grip in the bottom-right corner
+  local grip = CreateFrame("Button", nil, mover)
+  grip:SetSize(18, 18)
+  grip:SetPoint("BOTTOMRIGHT", -2, 2)
+  grip:SetFrameLevel(mover:GetFrameLevel() + 2)
+  grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+  grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+  grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+  grip:SetScript("OnMouseDown", function(self)
+    CB:StartResize()
+    self:SetScript("OnUpdate", function() CB:ResizeTo(cursorX()) end)
+  end)
+  grip:SetScript("OnMouseUp", function(self)
+    self:SetScript("OnUpdate", nil)
+    CB:StopResize()
+  end)
+  CB.resizeGrip = grip
   mover:Hide()
 
   self:ApplyLayout()

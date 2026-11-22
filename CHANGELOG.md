@@ -3,6 +3,7 @@
 ## 1.0.4
 
 - New quick setup on the first login: where the alerts go and which messages get one. `/chatbanner setup` or the **Quick setup** button in the options opens it again.
+- **Move and resize** in one go: drag the box to move the alerts, drag its corner to make them bigger or smaller. Everything scales together, so the proportions stay the same.
 - Quest progress after killing mobs or looting quest items ("Kobold Vermin slain: 3/10") is now its own source, **off by default**. Other system messages still alert.
 
 ## 1.0.3

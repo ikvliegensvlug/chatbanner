@@ -37,6 +37,12 @@ function Methods:Disable() self.disabled = true end
 function Methods:Enable() self.disabled = false end
 function Methods:GetWidth() return self.w end
 function Methods:GetHeight() return self.h end
+function Methods:GetScale() return self.scale or 1 end
+function Methods:GetEffectiveScale() return 1 end
+function Methods:GetLeft() return self.left or 0 end
+function Methods:GetTop() return self.top or 0 end
+CursorX = 0
+function GetCursorPosition() return CursorX, 0 end
 function Methods:Show() self.shown = true end
 function Methods:Hide() self.shown = false end
 function Methods:SetShown(v) self.shown = v and true or false end
