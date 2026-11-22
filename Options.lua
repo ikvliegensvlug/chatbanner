@@ -68,10 +68,7 @@ local function slider(label, x, y, min, max, step, format, get, set)
   s:SetMinMaxValues(min, max)
   s:SetValueStep(step)
   if s.SetObeyStepOnDrag then s:SetObeyStepOnDrag(true) end
-  s:EnableMouseWheel(true)
-  s:SetScript("OnMouseWheel", function(self, d)
-    self:SetValue(math.max(min, math.min(max, self:GetValue() + d * step)))
-  end)
+  -- No mouse wheel on sliders: it would change settings while scrolling the panel.
   s:SetScript("OnValueChanged", function(self, v)
     v = math.floor(v / step + 0.5) * step
     value:SetText(format(v))

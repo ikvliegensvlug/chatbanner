@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Scrolling the options panel no longer changes a slider when the mouse passes over it.
+
 ## 1.0.0
 
 First public release.
