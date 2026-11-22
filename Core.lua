@@ -19,7 +19,7 @@ CB.SOURCES = {
   { key = "yell",         label = "Yell" },
   { key = "emote",        label = "Emotes" },
   { key = "channel",      label = "Channels (General, Trade, LFG ...)" },
-  { key = "npc",          label = "NPCs talking" },
+  { key = "npc",          label = "NPCs and mobs talking" },
   { key = "boss",         label = "Boss emotes and whispers" },
   { key = "battleground", label = "Battleground messages" },
   { key = "system",       label = "System messages" },
@@ -60,7 +60,8 @@ CB.defaults = {
   ignoreOwn = true,
   sources = {
     whisper = true, party = true, raid = true, guild = true, officer = true,
-    say = true, yell = true, emote = true, channel = true, npc = true,
+    say = true, yell = true, emote = true, channel = true,
+    npc = false,          -- mobs shouting in combat is mostly noise
     boss = true, battleground = true, system = true,
   },
 }
@@ -88,6 +89,10 @@ CB.Merge = merge
 
 -- What changed per version, shown once in chat after an update (newest first).
 CB.NEWS = {
+  { version = "1.0.4", notes = {
+    "New quick setup with the most important choices: where the alerts go and which messages get one (/chatbanner setup).",
+    "Alerts for NPCs and mobs talking are now off by default; switch them on in the setup or the options.",
+  } },
   { version = "1.0.3", notes = {
     "The 'Follow the font size' option now sits right under the Row height slider it controls.",
   } },
@@ -141,10 +146,19 @@ function CB:Announce(isNew)
   ChatBannerDB.lastVersion = self.version
 end
 
+-- Players updating from before the quick setup (1.0.4) get the new NPC default
+-- too. The setup opens right after, so they see it and can switch it back on.
+function CB:Upgrade(isNew)
+  if not isNew and ChatBannerDB.setupDone == nil then
+    ChatBannerDB.sources.npc = false
+  end
+end
+
 function CB:ResetSettings()
   wipe(ChatBannerDB)
   merge(ChatBannerDB, self.defaults)
   ChatBannerDB.lastVersion = self.version
+  ChatBannerDB.setupDone = true
   self.db = ChatBannerDB
   if self.ApplyLayout then self:ApplyLayout() end
   if self.RefreshOptions then self:RefreshOptions() end
@@ -166,7 +180,9 @@ ev:SetScript("OnEvent", function(_, event, name)
     CB:InitAlerts()
   elseif event == "PLAYER_LOGIN" then
     CB:InitOptions()
+    CB:Upgrade(isNew)
     CB:Announce(isNew)
+    CB:MaybeSetup()
   end
 end)
 
@@ -175,6 +191,7 @@ end)
 ---------------------------------------------------------------------------
 local HELP = {
   "/chatbanner  - open the options",
+  "/chatbanner setup  - the quick setup with the most important choices",
   "/chatbanner test  - show sample alerts",
   "/chatbanner unlock  - drag the alerts to a new spot (lock to finish)",
   "/chatbanner reset  - restore all default settings",
@@ -187,6 +204,8 @@ SlashCmdList.CHATBANNER = function(msg)
   local cmd = (msg or ""):lower():match("^%s*(%S*)")
   if cmd == "" or cmd == "options" or cmd == "config" then
     CB:OpenOptions()
+  elseif cmd == "setup" then
+    CB:OpenSetup()
   elseif cmd == "test" then
     CB:Test()
   elseif cmd == "unlock" or cmd == "move" then

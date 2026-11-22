@@ -363,6 +363,7 @@ function CB:SetUnlocked(on)
     self:Print("Drag the box to move the alerts. Type /chatbanner lock when done.")
   end
   if self.RefreshOptions then self:RefreshOptions() end
+  if self.RefreshSetup then self:RefreshSetup() end
 end
 
 function CB:Test()

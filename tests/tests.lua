@@ -5,6 +5,7 @@ for _, file in ipairs(TOC_FILES) do
   chunk("ChatBanner", ns)
 end
 local CB = ns.CB
+local setupOpenedAtFirstLogin   -- filled in right after the login below
 
 local passed, failed = 0, 0
 local function check(cond, msg)
@@ -47,6 +48,7 @@ end
 -- start-up -------------------------------------------------------------------
 Fire("ADDON_LOADED", "ChatBanner")
 Fire("PLAYER_LOGIN")
+setupOpenedAtFirstLogin = _G.ChatBannerSetup and _G.ChatBannerSetup.shown
 
 test("settings are created with defaults", function()
   check(ChatBannerDB.width == 600, "width default")
@@ -194,7 +196,7 @@ test("options panel controls change the settings", function()
   end
   check(#sliders == 7, "7 sliders, got " .. #sliders)
   -- grow upwards + one per source + row height follows font, label, colour, sound, own messages
-  check(#boxes == 1 + #CB.SOURCES + 5, "checkboxes, got " .. #boxes)
+  check(#boxes == 1 + #CB.SOURCES + 5 + #CB.SETUP_GROUPS, "checkboxes, got " .. #boxes)
   CB:RefreshOptions()
   check(sliders[1].value == 600, "width slider shows the setting")
   sliders[1]:SetValue(803)          -- snaps to the 10-step
@@ -257,6 +259,75 @@ test("row height slider is greyed out while it follows the font", function()
   CB.db.autoHeight = false
   CB:RefreshOptions()
   check(not row.disabled, "enabled without autoHeight")
+end)
+
+local function setupBoxes()
+  local list = {}
+  for _, f in ipairs(AllFrames) do
+    if f.kind == "CheckButton" and f.parent == _G.ChatBannerSetup then list[#list + 1] = f end
+  end
+  return list
+end
+
+local function closeSetup()
+  local s = _G.ChatBannerSetup
+  s:Hide()
+  s.scripts.OnHide(s)
+end
+
+test("the quick setup opens on the first login", function()
+  check(setupOpenedAtFirstLogin == true, "setup shown at first login")
+  closeSetup()
+  check(CB.db.setupDone == true, "closing marks the setup as done")
+  CB:MaybeSetup()
+  check(not _G.ChatBannerSetup.shown, "not shown again once done")
+end)
+
+test("/chatbanner setup opens it again", function()
+  closeSetup()
+  SlashCmdList.CHATBANNER("setup")
+  check(_G.ChatBannerSetup.shown, "setup shown")
+  closeSetup()
+end)
+
+test("NPC and mob alerts are off by default", function()
+  check(CB.db.sources.npc == false, "npc off")
+  Fire("CHAT_MSG_MONSTER_YELL", "You will die!", "Kobold Vermin")
+  check(#alerts() == 0, "no alert for a mob yelling")
+end)
+
+test("setup checkboxes switch whole groups of sources", function()
+  CB:OpenSetup()
+  local boxes = setupBoxes()
+  check(#boxes == #CB.SETUP_GROUPS, "one box per group, got " .. #boxes)
+  check(boxes[2].checked == true, "party and raid shown as on")
+  check(boxes[6].checked == false, "npcs shown as off")
+  boxes[2]:SetChecked(false)
+  boxes[2].scripts.OnClick(boxes[2])
+  check(CB.db.sources.party == false and CB.db.sources.raid == false, "party and raid off")
+  boxes[6]:SetChecked(true)
+  boxes[6].scripts.OnClick(boxes[6])
+  check(CB.db.sources.npc == true, "npcs on")
+  closeSetup()
+end)
+
+test("the setup's move button unlocks, closing locks again", function()
+  CB:OpenSetup()
+  CB:SetUnlocked(true)
+  check(CB.unlocked, "unlocked")
+  closeSetup()
+  check(CB.unlocked == false, "locked after closing the setup")
+end)
+
+test("players updating from before the setup get NPC alerts off once", function()
+  ChatBannerDB.setupDone = nil
+  ChatBannerDB.sources.npc = true
+  CB:Upgrade(false)
+  check(ChatBannerDB.sources.npc == false, "npc switched off for updaters")
+  ChatBannerDB.setupDone = true
+  ChatBannerDB.sources.npc = true
+  CB:Upgrade(false)
+  check(ChatBannerDB.sources.npc == true, "a later choice is kept")
 end)
 
 local function printedText() return table.concat(Printed, "\n") end

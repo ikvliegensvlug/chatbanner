@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4
+
+- New quick setup on the first login: where the alerts go and which messages get one. `/chatbanner setup` or the **Quick setup** button in the options opens it again.
+- Alerts for NPCs and mobs talking are now off by default (players updating get this once too, shown in the setup).
+
 ## 1.0.3
 
 - The **Follow the font size** option now sits right under the **Row height** slider it controls.

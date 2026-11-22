@@ -184,6 +184,7 @@ local function build()
   end)
   button("Reset position", COL1 + 160, y, 130, function() CB:ResetPosition() end)
   button("Show test alerts", COL1 + 300, y, 150, function() CB:Test() end)
+  button("Quick setup", COL1 + 460, y, 110, function() CB:OpenSetup() end)
   y = y - 40
   slider("Width", COL1, y, 250, 1400, 10, plain, setting("width", true))
   local _, setRow = setting("rowHeight", true)
