@@ -195,8 +195,8 @@ test("options panel controls change the settings", function()
     if f.kind == "CheckButton" then boxes[#boxes + 1] = f end
   end
   check(#sliders == 7, "7 sliders, got " .. #sliders)
-  -- grow upwards + one per source + row height follows font, label, colour, sound, own messages
-  check(#boxes == 1 + #CB.SOURCES + 5 + #CB.SETUP_GROUPS, "checkboxes, got " .. #boxes)
+  -- grow upwards + one per source + row height follows font, label, colour, sound, own messages, loot summary
+  check(#boxes == 1 + #CB.SOURCES + 6 + #CB.SETUP_GROUPS, "checkboxes, got " .. #boxes)
   CB:RefreshOptions()
   check(sliders[1].value == 600, "width slider shows the setting")
   sliders[1]:SetValue(803)          -- snaps to the 10-step
@@ -385,6 +385,83 @@ test("loot rolls can be switched off", function()
   Fire("CHAT_MSG_LOOT", "Bram won: [Archeus]")
   check(#alerts() == 0, "no roll alerts")
   GetLootRollItemLink = nil
+end)
+
+local BLUE = "|cff0070dd|Hitem:2000::::::::|h[Archeus]|h|r"
+local PURPLE = "|cffa335ee|Hitem:2100::::::::|h[Ironfoe]|h|r"
+local GREEN = "|cff1eff00|Hitem:2200::::::::|h[Gnoll Hide]|h|r"
+
+local function enterDungeon(name)
+  IsInInstance = function() return true, "party" end
+  GetInstanceInfo = function() return name end
+  Fire("PLAYER_ENTERING_WORLD")
+end
+
+local function leaveDungeon()
+  IsInInstance = function() return false, "none" end
+  Fire("PLAYER_ENTERING_WORLD")
+end
+
+test("loot lines are read with who got which item", function()
+  local who, link = CB.ParseLoot("Bram-Realm receives loot: " .. BLUE .. ".")
+  check(who == "Bram-Realm" and link == BLUE, "someone else")
+  who, link = CB.ParseLoot("You receive loot: " .. PURPLE .. "x2.")
+  check(who == nil and link == PURPLE, "you, more than one")
+  check(CB.ParseLoot("You won: " .. BLUE) == nil, "roll results are not counted twice")
+  check(CB.ItemQuality(BLUE) == 3 and CB.ItemQuality(PURPLE) == 4 and CB.ItemQuality(GREEN) == 2, "quality from colour")
+end)
+
+test("leaving a dungeon shows who got blue or better items", function()
+  enterDungeon("Wailing Caverns")
+  Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. BLUE .. ".")
+  Fire("CHAT_MSG_LOOT", "Lisa receives loot: " .. GREEN .. ".")
+  Fire("CHAT_MSG_LOOT", "You receive loot: " .. PURPLE .. ".")
+  Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. PURPLE .. ".")
+  check(#alerts() == 0, "nothing during the dungeon")
+  leaveDungeon()
+  local list = alerts()
+  check(#list == 3, "summary and two players, got " .. #list)
+  local function find(s)
+    for _, a in ipairs(list) do if msgOf(a):find(s, 1, true) then return a end end
+  end
+  local summary = find("Wailing Caverns")
+  check(summary and summary.tag.text == "Summary", "summary alert")
+  local bram = find("Bram")
+  check(bram and msgOf(bram):find("Ironfoe", 1, true) and msgOf(bram):find("Archeus", 1, true),
+    "Bram's two items in one alert")
+  check(find("Aztek"), "your own item under your name")
+  for _, a in ipairs(list) do check(not msgOf(a):find("Gnoll Hide", 1, true), "green items left out") end
+  check(CB.db.lootRun == nil and CB.db.lastLoot.name == "Wailing Caverns", "run finished and kept")
+  Printed = {}
+  SlashCmdList.CHATBANNER("loot")
+  check(#Printed == 3 and Printed[2]:find("Bram", 1, true), "/chatbanner loot repeats it in chat")
+end)
+
+test("dying and running back does not end the dungeon", function()
+  enterDungeon("Deadmines")
+  Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. BLUE .. ".")
+  UnitIsDeadOrGhost = function() return true end
+  leaveDungeon()
+  check(#alerts() == 0 and CB.db.lootRun, "still in the run as a ghost")
+  UnitIsDeadOrGhost = function() return false end
+  enterDungeon("Deadmines")
+  Fire("CHAT_MSG_LOOT", "Lisa receives loot: " .. BLUE .. ".")
+  leaveDungeon()
+  check(#CB.db.lastLoot.items == 2, "both items in one summary")
+  UnitIsDeadOrGhost = nil
+end)
+
+test("no summary without rare items or with the option off", function()
+  enterDungeon("Ragefire Chasm")
+  Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. GREEN .. ".")
+  leaveDungeon()
+  check(#alerts() == 0, "nothing worth a summary")
+  CB.db.lootSummary = false
+  enterDungeon("Ragefire Chasm")
+  Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. BLUE .. ".")
+  leaveDungeon()
+  check(#alerts() == 0, "option off")
+  IsInInstance, GetInstanceInfo = nil, nil
 end)
 
 test("quest kill and item progress give no alert by default", function()

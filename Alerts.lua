@@ -309,7 +309,7 @@ local function tick()
   if #active == 0 then holder:SetScript("OnUpdate", nil) end
 end
 
--- Show one alert. info = EVENTS entry; extra = { tag = "Trade", channelNum = 2 }
+-- Show one alert. info = EVENTS entry; extra = { tag = "Trade", channelNum = 2, duration = 30 }
 function CB:Show(info, text, sender, extra)
   local db = self.db
   local t = table.remove(pool) or makeAlert()
@@ -333,7 +333,7 @@ function CB:Show(info, text, sender, extra)
   if db.colorText then t.msg:SetTextColor(r, g, b) else t.msg:SetTextColor(0.93, 0.93, 0.93) end
 
   t.born = GetTime()
-  t.expire = t.born + db.duration
+  t.expire = t.born + ((extra and extra.duration) or db.duration)
   t.hover = false
   t:SetAlpha(1)
   t:Show()

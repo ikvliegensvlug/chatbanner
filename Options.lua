@@ -240,6 +240,8 @@ local function build()
   y = y - 34
   checkbox("Play a sound with each alert", COL1, y, setting("sound"))
   checkbox("Skip my own messages", COL2, y, setting("ignoreOwn"))
+  y = y - 30
+  checkbox("Loot summary after a dungeon (who got blue or better)", COL1, y, setting("lootSummary"))
   y = y - 44
   button("Reset all settings", COL1, y, 160, function()
     CB:ResetSettings()

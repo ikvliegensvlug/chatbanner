@@ -60,6 +60,7 @@ CB.defaults = {
   -- behaviour
   sound = false,
   ignoreOwn = true,
+  lootSummary = true,     -- after a dungeon: who got blue or better items
   sources = {
     whisper = true, party = true, raid = true, guild = true, officer = true,
     say = true, yell = true, emote = true, channel = true, npc = true,
@@ -94,6 +95,7 @@ CB.Merge = merge
 CB.NEWS = {
   { version = "1.0.5", notes = {
     "New source: loot rolls. An alert when an item comes up for a roll, and one for who won it. Other loot lines stay in your chat. Switch it off under Loot rolls.",
+    "Loot summary: when you leave a dungeon or raid, ChatBanner shows who got blue or better items (/chatbanner loot shows it again).",
   } },
   { version = "1.0.4", notes = {
     "New quick setup with the most important choices: where the alerts go and which messages get one (/chatbanner setup).",
@@ -196,6 +198,7 @@ local HELP = {
   "/chatbanner unlock  - move and resize the alerts (lock to finish)",
   "/chatbanner reset  - restore all default settings",
   "/chatbanner news  - show what changed in recent versions",
+  "/chatbanner loot  - who got blue or better items in the last dungeon",
 }
 
 SLASH_CHATBANNER1 = "/chatbanner"
@@ -215,6 +218,8 @@ SlashCmdList.CHATBANNER = function(msg)
   elseif cmd == "reset" then
     CB:ResetSettings()
     CB:Print("All settings restored to default.")
+  elseif cmd == "loot" then
+    CB:ShowLootSummary(CB.db.lastLoot)
   elseif cmd == "news" then
     if not CB:ShowNews() then CB:Print("No release notes for this version.") end
   else

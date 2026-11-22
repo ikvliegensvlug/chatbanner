@@ -3,6 +3,7 @@
 ## 1.0.5
 
 - New source **Loot rolls**, on by default: an alert when an item comes up for a roll ("Roll for [Item]"), and one for who won it or when everyone passed. Other loot lines (looting, money, single rolls) stay in your chat only.
+- **Loot summary** after a dungeon or raid, on by default: when you leave, ChatBanner shows who received blue or better items, on screen and in chat. Dying and running back does not end the dungeon. `/chatbanner loot` shows the last summary again; switch it off under Behaviour.
 
 ## 1.0.4
 
