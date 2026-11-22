@@ -1,0 +1,13 @@
+## Interface: 16001
+## Title: ChatBanner
+## Notes: Big, clickable on-screen alerts for chat messages, so you never miss a whisper, guild or party message again.
+## Author: ikvliegensvlug
+## Version: 1.0.0
+## SavedVariables: ChatBannerDB
+## IconTexture: Interface\Icons\INV_Letter_15
+## X-License: MIT
+## X-Curse-Project-ID: 1823040
+
+Core.lua
+Alerts.lua
+Options.lua

@@ -1,0 +1,10 @@
+# Changelog
+
+## 1.0.0
+
+First public release.
+
+- On-screen alerts for whispers, party, raid, guild, officer, say, yell, emotes, channels, NPCs, bosses, battlegrounds and system messages.
+- Left-click to reply, right-click to dismiss.
+- Options panel (`/chatbanner`): position and size, sources, style and behaviour.
+- Chat filters of Blizzard and other add-ons are respected; empty and multi-line messages are handled.

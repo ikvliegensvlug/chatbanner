@@ -1,0 +1,8 @@
+package-as: ChatBanner
+
+ignore:
+  - tests
+  - node_modules
+  - package.json
+  - package-lock.json
+  - .gitignore

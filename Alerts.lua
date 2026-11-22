@@ -1,0 +1,388 @@
+-- ChatBanner: the alerts themselves. Listens to chat events and shows a stack of
+-- clickable alerts. Left-click replies in the same channel, right-click dismisses.
+local _, ns = ...
+local CB = ns.CB
+
+local WHITE = "Interface\\Buttons\\WHITE8X8"
+local GAP = 6
+local FADE = 0.6
+
+-- event -> source (options key), tag text, ChatTypeInfo key, how a click replies.
+-- noSender: the message already names who did it (system text, emotes).
+local EVENTS = {
+  CHAT_MSG_WHISPER           = { source = "whisper", tag = "Whisper", chat = "WHISPER", reply = "tell" },
+  CHAT_MSG_BN_WHISPER        = { source = "whisper", tag = "Whisper", chat = "BN_WHISPER", reply = "bnet" },
+  CHAT_MSG_PARTY             = { source = "party", tag = "Party", chat = "PARTY", reply = "/p " },
+  CHAT_MSG_PARTY_LEADER      = { source = "party", tag = "Party", chat = "PARTY_LEADER", reply = "/p " },
+  CHAT_MSG_RAID              = { source = "raid", tag = "Raid", chat = "RAID", reply = "/ra " },
+  CHAT_MSG_RAID_LEADER       = { source = "raid", tag = "Raid", chat = "RAID_LEADER", reply = "/ra " },
+  CHAT_MSG_RAID_WARNING      = { source = "raid", tag = "Warning", chat = "RAID_WARNING", reply = "/ra " },
+  CHAT_MSG_GUILD             = { source = "guild", tag = "Guild", chat = "GUILD", reply = "/g " },
+  CHAT_MSG_GUILD_ACHIEVEMENT = { source = "guild", tag = "Guild", chat = "GUILD" },
+  CHAT_MSG_OFFICER           = { source = "officer", tag = "Officer", chat = "OFFICER", reply = "/o " },
+  CHAT_MSG_SAY               = { source = "say", tag = "Say", chat = "SAY", reply = "/s " },
+  CHAT_MSG_YELL              = { source = "yell", tag = "Yell", chat = "YELL", reply = "/y " },
+  CHAT_MSG_EMOTE             = { source = "emote", tag = "Emote", chat = "EMOTE" },
+  CHAT_MSG_TEXT_EMOTE        = { source = "emote", tag = "Emote", chat = "TEXT_EMOTE", noSender = true },
+  CHAT_MSG_CHANNEL           = { source = "channel", tag = "Channel", chat = "CHANNEL", reply = "channel" },
+  CHAT_MSG_MONSTER_SAY       = { source = "npc", tag = "NPC", chat = "MONSTER_SAY" },
+  CHAT_MSG_MONSTER_YELL      = { source = "npc", tag = "NPC", chat = "MONSTER_YELL" },
+  CHAT_MSG_MONSTER_WHISPER   = { source = "npc", tag = "NPC", chat = "MONSTER_WHISPER" },
+  CHAT_MSG_MONSTER_EMOTE     = { source = "npc", tag = "NPC", chat = "MONSTER_EMOTE", noSender = true },
+  CHAT_MSG_RAID_BOSS_EMOTE   = { source = "boss", tag = "Boss", chat = "RAID_BOSS_EMOTE", noSender = true },
+  CHAT_MSG_RAID_BOSS_WHISPER = { source = "boss", tag = "Boss", chat = "RAID_BOSS_WHISPER" },
+  CHAT_MSG_BG_SYSTEM_NEUTRAL = { source = "battleground", tag = "Battleground", chat = "BG_SYSTEM_NEUTRAL", noSender = true },
+  CHAT_MSG_BG_SYSTEM_ALLIANCE = { source = "battleground", tag = "Battleground", chat = "BG_SYSTEM_ALLIANCE", noSender = true },
+  CHAT_MSG_BG_SYSTEM_HORDE   = { source = "battleground", tag = "Battleground", chat = "BG_SYSTEM_HORDE", noSender = true },
+  CHAT_MSG_SYSTEM            = { source = "system", tag = "System", chat = "SYSTEM", noSender = true },
+}
+CB.EVENTS = EVENTS
+
+local holder, mover
+local active, pool = {}, {}
+
+---------------------------------------------------------------------------
+-- Helpers
+---------------------------------------------------------------------------
+local function fontPath()
+  for _, f in ipairs(CB.FONTS) do
+    if f.key == CB.db.font then return f.path end
+  end
+  return CB.FONTS[1].path
+end
+
+local function shortName(sender)
+  if not sender or sender == "" then return nil end
+  if Ambiguate then return Ambiguate(sender, "short") end
+  return (sender:gsub("%-.*$", ""))
+end
+
+local function chatColor(chat)
+  local info = ChatTypeInfo and ChatTypeInfo[chat]
+  if info and info.r then return info.r, info.g, info.b end
+  return 0.9, 0.9, 0.9
+end
+
+-- Background plus four 1-pixel edges.
+local function addBox(frame)
+  frame.bg = frame:CreateTexture(nil, "BACKGROUND")
+  frame.bg:SetTexture(WHITE)
+  frame.bg:SetAllPoints()
+  frame.edges = {}
+  for i = 1, 4 do
+    local e = frame:CreateTexture(nil, "BORDER")
+    e:SetTexture(WHITE)
+    frame.edges[i] = e
+  end
+  local e = frame.edges
+  e[1]:SetPoint("TOPLEFT"); e[1]:SetPoint("TOPRIGHT"); e[1]:SetHeight(1)
+  e[2]:SetPoint("BOTTOMLEFT"); e[2]:SetPoint("BOTTOMRIGHT"); e[2]:SetHeight(1)
+  e[3]:SetPoint("TOPLEFT"); e[3]:SetPoint("BOTTOMLEFT"); e[3]:SetWidth(1)
+  e[4]:SetPoint("TOPRIGHT"); e[4]:SetPoint("BOTTOMRIGHT"); e[4]:SetWidth(1)
+end
+
+local function edgeColor(frame, r, g, b, a)
+  for i = 1, 4 do frame.edges[i]:SetVertexColor(r, g, b, a) end
+end
+
+-- Normal edge colour of an alert, depending on the border style.
+local function restEdge(t)
+  local mode = CB.db.border
+  if mode == "type" then
+    edgeColor(t, t.r or 1, t.g or 1, t.b or 1, 0.9)
+  elseif mode == "none" then
+    edgeColor(t, 0, 0, 0, 0)
+  else
+    edgeColor(t, 1, 1, 1, 0.16)
+  end
+end
+
+---------------------------------------------------------------------------
+-- Clicks
+---------------------------------------------------------------------------
+local function reply(t)
+  local r = t.reply
+  if not r then return end
+  if r == "tell" then
+    if ChatFrame_SendTell then ChatFrame_SendTell(t.sender) end
+  elseif r == "bnet" then
+    if ChatFrame_SendBNetTell then ChatFrame_SendBNetTell(t.sender) end
+  elseif r == "channel" then
+    if t.channelNum and ChatFrame_OpenChat then ChatFrame_OpenChat("/" .. t.channelNum .. " ") end
+  elseif ChatFrame_OpenChat then
+    ChatFrame_OpenChat(r)
+  end
+end
+
+---------------------------------------------------------------------------
+-- One alert
+---------------------------------------------------------------------------
+local function styleAlert(t)
+  local db = CB.db
+  local font, size = fontPath(), db.fontSize
+  t:SetSize(db.width, db.rowHeight)
+  t.bg:SetVertexColor(0, 0, 0, db.bgAlpha)
+  restEdge(t)
+  t.tag:SetFont(font, math.max(8, size - 3), "")
+  t.msg:SetFont(font, size, "")
+  t.age:SetFont(font, math.max(8, size - 3), "")
+  t.tagBox:SetHeight(math.max(12, db.rowHeight - 12))
+  t.tagBox:SetShown(db.showTag)
+  t.msg:ClearAllPoints()
+  if db.showTag then
+    t.msg:SetPoint("LEFT", t.tagBox, "RIGHT", 10, 0)
+  else
+    t.msg:SetPoint("LEFT", t, "LEFT", 12, 0)
+  end
+  t.msg:SetPoint("RIGHT", t, "RIGHT", -48, 0)
+end
+
+local function makeAlert()
+  local t = CreateFrame("Button", nil, holder)
+  addBox(t)
+  t.tagBox = CreateFrame("Frame", nil, t)
+  t.tagBox:SetPoint("LEFT", 10, 0)
+  addBox(t.tagBox)
+  t.tagBox.bg:SetVertexColor(0, 0, 0, 0)
+  t.tag = t.tagBox:CreateFontString(nil, "OVERLAY")
+  t.tag:SetPoint("CENTER")
+  t.msg = t:CreateFontString(nil, "OVERLAY")
+  t.msg:SetJustifyH("LEFT")
+  t.msg:SetWordWrap(false)
+  t.age = t:CreateFontString(nil, "OVERLAY")
+  t.age:SetPoint("RIGHT", -10, 0)
+  t.age:SetTextColor(0.55, 0.56, 0.58)
+  for _, fs in ipairs({ t.tag, t.msg, t.age }) do
+    fs:SetShadowColor(0, 0, 0, 1)
+    fs:SetShadowOffset(1, -1)
+  end
+  t:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  t:SetScript("OnClick", function(self, button)
+    if button == "LeftButton" then reply(self) end
+    self.expire = 0
+  end)
+  t:SetScript("OnEnter", function(self)
+    self.hover = true
+    edgeColor(self, 1, 1, 1, 1)
+  end)
+  t:SetScript("OnLeave", function(self)
+    self.hover = false
+    restEdge(self)
+  end)
+  t:Hide()
+  styleAlert(t)
+  return t
+end
+
+local function stack()
+  local step = CB.db.rowHeight + GAP
+  for i, t in ipairs(active) do
+    t:ClearAllPoints()
+    if CB.db.growUp then
+      t:SetPoint("BOTTOM", holder, "BOTTOM", 0, (i - 1) * step)
+    else
+      t:SetPoint("TOP", holder, "TOP", 0, -(i - 1) * step)
+    end
+  end
+end
+
+local function release(t)
+  for i, x in ipairs(active) do
+    if x == t then table.remove(active, i) break end
+  end
+  t:Hide()
+  pool[#pool + 1] = t
+  stack()
+end
+
+local function tick()
+  local now = GetTime()
+  for i = #active, 1, -1 do
+    local t = active[i]
+    if t.hover then t.expire = math.max(t.expire, now + 2) end
+    local left = t.expire - now
+    if left <= 0 then
+      release(t)
+    else
+      t:SetAlpha(left < FADE and left / FADE or 1)
+      local age = math.floor(now - t.born)
+      t.age:SetText(age < 2 and "now" or (age .. "s"))
+    end
+  end
+  if #active == 0 then holder:SetScript("OnUpdate", nil) end
+end
+
+-- Show one alert. info = EVENTS entry; extra = { tag = "Trade", channelNum = 2 }
+function CB:Show(info, text, sender, extra)
+  local db = self.db
+  local t = table.remove(pool) or makeAlert()
+  styleAlert(t)
+  t.reply, t.sender = info.reply, sender
+  t.channelNum = extra and extra.channelNum
+  local r, g, b = chatColor(info.chat)
+  t.r, t.g, t.b = r, g, b
+  t.tag:SetText((extra and extra.tag) or info.tag)
+  t.tag:SetTextColor(r, g, b)
+  t.tagBox:SetWidth(t.tag:GetStringWidth() + 14)
+  edgeColor(t.tagBox, r, g, b, 0.9)
+  restEdge(t)
+
+  local name = info.reply == "bnet" and sender or shortName(sender)
+  if name and not info.noSender then
+    t.msg:SetText("|cffffffff" .. name .. "|r: " .. text)
+  else
+    t.msg:SetText(text)
+  end
+  if db.colorText then t.msg:SetTextColor(r, g, b) else t.msg:SetTextColor(0.93, 0.93, 0.93) end
+
+  t.born = GetTime()
+  t.expire = t.born + db.duration
+  t.hover = false
+  t:SetAlpha(1)
+  t:Show()
+  table.insert(active, 1, t)
+  while #active > db.maxAlerts do release(active[#active]) end
+  stack()
+  holder:SetScript("OnUpdate", tick)
+
+  if db.sound and SOUNDKIT and SOUNDKIT.TELL_MESSAGE then
+    PlaySound(SOUNDKIT.TELL_MESSAGE, "Master")
+  end
+end
+
+---------------------------------------------------------------------------
+-- Chat events
+---------------------------------------------------------------------------
+-- Run the chat filters of Blizzard and other add-ons: what your chat hides,
+-- ChatBanner does not show either. Returns nil when filtered, else the arguments.
+local function runFilters(event, ...)
+  local args, n = { ... }, select("#", ...)
+  local filters = ChatFrame_GetMessageEventFilters and ChatFrame_GetMessageEventFilters(event)
+  if filters then
+    for _, filter in ipairs(filters) do
+      local res = { pcall(filter, DEFAULT_CHAT_FRAME, event, unpack(args, 1, n)) }
+      if res[1] then
+        if res[2] then return nil end
+        if res[3] ~= nil then
+          for i = 3, #res do args[i - 2] = res[i] end
+        end
+      end
+    end
+  end
+  return args
+end
+
+-- One line of plain text, or nil when nothing readable is left.
+local function clean(text, info, sender)
+  if type(text) ~= "string" then return nil end
+  if info.noSender and sender and text:find("%%s") then
+    text = text:gsub("%%s", shortName(sender) or sender)
+  end
+  text = text:gsub("[\r\n]+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+  local plain = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", "")
+  if not plain:find("%S") then return nil end
+  return text
+end
+CB.CleanText = clean
+
+local function onEvent(_, event, ...)
+  local info = EVENTS[event]
+  if not info or not CB.db.sources[info.source] then return end
+  local args = runFilters(event, ...)
+  if not args then return end
+  local text, sender = args[1], args[2]
+
+  -- your own messages (whispering yourself still alerts, handy for testing)
+  if CB.db.ignoreOwn and info.reply and info.reply ~= "tell" and info.reply ~= "bnet" then
+    local me = UnitName("player")
+    if me and shortName(sender) == me then return end
+  end
+
+  text = clean(text, info, sender)
+  if not text then return end
+
+  local extra
+  if event == "CHAT_MSG_CHANNEL" then
+    local channelName = args[9]
+    extra = {
+      tag = (type(channelName) == "string" and channelName:match("^([^%s%-]+)")) or info.tag,
+      channelNum = args[8],
+    }
+  end
+  CB:Show(info, text, sender, extra)
+end
+
+---------------------------------------------------------------------------
+-- Position, size and moving
+---------------------------------------------------------------------------
+function CB:ApplyLayout()
+  local db = self.db
+  holder:SetScale(db.scale)
+  holder:SetSize(db.width, (db.rowHeight + GAP) * db.maxAlerts)
+  holder:ClearAllPoints()
+  local p = db.position
+  if p then
+    holder:SetPoint(p[1], UIParent, p[2], p[3], p[4])
+  else
+    holder:SetPoint("TOP", UIParent, "TOP", 0, -60)
+  end
+  for _, t in ipairs(active) do styleAlert(t) end
+  for _, t in ipairs(pool) do styleAlert(t) end
+  while #active > db.maxAlerts do release(active[#active]) end
+  stack()
+end
+
+function CB:ResetPosition()
+  self.db.position = false
+  self:ApplyLayout()
+end
+
+function CB:SetUnlocked(on)
+  self.unlocked = on and true or false
+  mover:SetShown(self.unlocked)
+  if self.unlocked then
+    self:Print("Drag the box to move the alerts. Type /chatbanner lock when done.")
+  end
+  if self.RefreshOptions then self:RefreshOptions() end
+end
+
+function CB:Test()
+  local E = EVENTS
+  self:Show(E.CHAT_MSG_SYSTEM, "Thrall has come online.")
+  self:Show(E.CHAT_MSG_MONSTER_YELL, "Honor your heroes!", "Herald of Thrall")
+  self:Show(E.CHAT_MSG_CHANNEL, "LFM Ragefire Chasm, need 1 tank", "Lisa", { tag = "Trade", channelNum = 2 })
+  self:Show(E.CHAT_MSG_GUILD, "anyone doing Leatherworking?", "Joost")
+  self:Show(E.CHAT_MSG_WHISPER, "coming along to Wailing Caverns?", "Bram")
+end
+
+function CB:InitAlerts()
+  holder = CreateFrame("Frame", "ChatBannerFrame", UIParent)
+  holder:SetFrameStrata("HIGH")
+  holder:SetMovable(true)
+  holder:SetClampedToScreen(true)
+
+  mover = CreateFrame("Frame", nil, holder)
+  mover:SetAllPoints()
+  mover:SetFrameLevel(holder:GetFrameLevel() + 20)
+  addBox(mover)
+  mover.bg:SetVertexColor(0.2, 0.6, 1, 0.25)
+  edgeColor(mover, 0.2, 0.6, 1, 1)
+  local label = mover:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  label:SetPoint("CENTER")
+  label:SetText("ChatBanner: drag to move, /chatbanner lock to finish")
+  mover:EnableMouse(true)
+  mover:RegisterForDrag("LeftButton")
+  mover:SetScript("OnDragStart", function() holder:StartMoving() end)
+  mover:SetScript("OnDragStop", function()
+    holder:StopMovingOrSizing()
+    local p, _, rp, x, y = holder:GetPoint()
+    CB.db.position = { p, rp, math.floor(x + 0.5), math.floor(y + 0.5) }
+  end)
+  mover:Hide()
+
+  self:ApplyLayout()
+
+  local ev = CreateFrame("Frame")
+  for event in pairs(EVENTS) do pcall(ev.RegisterEvent, ev, event) end
+  ev:SetScript("OnEvent", onEvent)
+end
