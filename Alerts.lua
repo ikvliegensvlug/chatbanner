@@ -119,7 +119,7 @@ end
 ---------------------------------------------------------------------------
 -- Size of the label text (channel tag and age), following the font size.
 function CB:LabelSize()
-  return math.max(6, math.floor(self.db.fontSize * self.db.tagScale + 0.5))
+  return math.max(6, math.floor(self.db.fontSize * 0.8 + 0.5))
 end
 
 -- Height of one alert. Never smaller than what the text and label need;

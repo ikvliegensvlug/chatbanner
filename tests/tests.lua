@@ -192,7 +192,7 @@ test("options panel controls change the settings", function()
     if f.kind == "Slider" then sliders[#sliders + 1] = f end
     if f.kind == "CheckButton" then boxes[#boxes + 1] = f end
   end
-  check(#sliders == 8, "8 sliders, got " .. #sliders)
+  check(#sliders == 7, "7 sliders, got " .. #sliders)
   -- grow upwards + one per source + row height follows font, label, colour, sound, own messages
   check(#boxes == 1 + #CB.SOURCES + 5, "checkboxes, got " .. #boxes)
   CB:RefreshOptions()
@@ -236,11 +236,11 @@ test("a fixed row height never cuts off the text", function()
   check(a.tagBox.h <= a.h - 4, "label box inside the row")
 end)
 
-test("label size scales the label and its box", function()
+test("the label and its box grow with the font size", function()
   Fire("CHAT_MSG_GUILD", "hello", "A")
   local a = alerts()[1]
   local smallW = a.tagBox.w
-  CB.db.tagScale = 1.5
+  CB.db.fontSize = 26
   CB:ApplyLayout()
   check(CB:LabelSize() == 21, "label size 21, got " .. CB:LabelSize())
   check(a.tagBox.w > smallW, "label box grows with the label")

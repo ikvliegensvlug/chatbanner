@@ -229,9 +229,8 @@ local function build()
   dropdown("Border", COL1, y, CB.BORDERS, setting("border", true))
   slider("Background opacity", COL2, y, 0, 1, 0.05, percent, setting("bgAlpha", true))
   y = y - 56
-  slider("Label size", COL1, y, 0.5, 1.5, 0.05, percent, setting("tagScale", true))
-  checkbox("Row height follows the font size", COL2, y - 10, setting("autoHeight", true))
-  y = y - 50
+  checkbox("Row height follows the font size", COL1, y, setting("autoHeight", true))
+  y = y - 30
   checkbox("Show the channel label", COL1, y, setting("showTag", true))
   checkbox("Colour the text like the chat type", COL2, y, setting("colorText"))
 

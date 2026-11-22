@@ -5,7 +5,7 @@
 - After an update, ChatBanner tells you in chat what changed. `/chatbanner news` shows it again.
 - New players get a short welcome line with the commands.
 - The row height now follows the font size (option, on by default), so larger text always fits.
-- New **Label size** slider for the channel label; its box now always fits around the label.
+- The channel label and its box grow with the font size, so the label always fits.
 - With a fixed row height, rows still grow just enough to fit the text.
 
 ## 1.0.1
