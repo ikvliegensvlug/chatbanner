@@ -112,8 +112,12 @@ local function build()
   done:SetPoint("BOTTOMRIGHT", -18, 16)
   frame.doneButton = done
 
-  -- However it is closed, the setup counts as done and the alerts are locked again.
-  frame:SetScript("OnHide", function()
+  -- Closed by the player (Done, X, Esc, All options): the setup counts as done and
+  -- the alerts are locked again. OnHide also fires when the whole UI is hidden
+  -- (Alt+Z, a cinematic, logging out); then the frame itself is still "shown",
+  -- and the setup should come back next time.
+  frame:SetScript("OnHide", function(self)
+    if self:IsShown() then return end
     CB.db.setupDone = true
     if CB.unlocked then CB:SetUnlocked(false) end
   end)

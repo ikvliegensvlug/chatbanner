@@ -283,6 +283,16 @@ test("the quick setup opens on the first login", function()
   check(not _G.ChatBannerSetup.shown, "not shown again once done")
 end)
 
+test("hiding the whole UI does not count as finishing the setup", function()
+  ChatBannerDB.setupDone = nil
+  CB:OpenSetup()
+  local s = _G.ChatBannerSetup
+  s.scripts.OnHide(s)                -- parent hidden: the frame itself stays shown
+  check(ChatBannerDB.setupDone == nil, "not marked done")
+  closeSetup()
+  check(ChatBannerDB.setupDone == true, "done after the player closes it")
+end)
+
 test("/chatbanner setup opens it again", function()
   closeSetup()
   SlashCmdList.CHATBANNER("setup")
