@@ -272,6 +272,11 @@ function CB:InitOptions()
 
   build()
   panel:SetScript("OnShow", function() CB:RefreshOptions() end)
+  -- Closing the options (or switching to another category) ends moving and
+  -- resizing, unless the quick setup is still open and owns it.
+  panel:SetScript("OnHide", function()
+    if CB.unlocked and not CB:SetupShown() then CB:SetUnlocked(false) end
+  end)
 
   if Settings and Settings.RegisterCanvasLayoutCategory then
     local category = Settings.RegisterCanvasLayoutCategory(panel, "ChatBanner")

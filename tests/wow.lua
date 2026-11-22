@@ -47,6 +47,7 @@ function Methods:Show() self.shown = true end
 function Methods:Hide() self.shown = false end
 function Methods:SetShown(v) self.shown = v and true or false end
 function Methods:IsShown() return self.shown end
+function Methods:IsVisible() return self.shown end
 function Methods:SetAlpha(a) self.alpha = a end
 function Methods:GetAlpha() return self.alpha end
 function Methods:SetText(t) self.text = t end

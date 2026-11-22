@@ -328,6 +328,24 @@ test("the resize corner scales the alerts and keeps the top-left corner", functi
   CB:SetUnlocked(false)
 end)
 
+test("moving ends when the options close or the settings are reset", function()
+  local panel = _G.ChatBannerOptions
+  local mover = CB.resizeGrip.parent
+  CB:SetUnlocked(true)
+  check(mover.shown, "mover shown while unlocked")
+  panel.scripts.OnHide(panel)
+  check(not CB.unlocked and not mover.shown, "locked when the options close")
+  CB:OpenSetup()
+  CB:SetUnlocked(true)
+  panel.scripts.OnHide(panel)
+  check(CB.unlocked, "stays unlocked while the quick setup is open")
+  closeSetup()
+  check(not CB.unlocked, "locked when the setup closes")
+  CB:SetUnlocked(true)
+  CB:ResetSettings()
+  check(not CB.unlocked and not mover.shown, "locked after a reset")
+end)
+
 test("/chatbanner setup opens it again", function()
   closeSetup()
   SlashCmdList.CHATBANNER("setup")

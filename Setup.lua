@@ -138,6 +138,10 @@ function CB:RefreshSetup()
   frame.moveButton:SetText(self.unlocked and "Done moving" or "Move and resize")
 end
 
+function CB:SetupShown()
+  return frame ~= nil and frame:IsVisible() and true or false
+end
+
 function CB:OpenSetup()
   if not frame then build() end
   self:RefreshSetup()

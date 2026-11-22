@@ -93,6 +93,7 @@ CB.NEWS = {
   { version = "1.0.4", notes = {
     "New quick setup with the most important choices: where the alerts go and which messages get one (/chatbanner setup).",
     "Move and resize in one go: drag the box to move, drag its corner to resize. The proportions stay the same.",
+    "Moving and resizing ends when you close the options or the quick setup, or reset the settings.",
     "Quest progress such as 'Kobold Vermin slain: 3/10' is now its own source and off by default, so killing mobs no longer gives alerts.",
   } },
   { version = "1.0.3", notes = {
@@ -149,6 +150,7 @@ function CB:Announce(isNew)
 end
 
 function CB:ResetSettings()
+  if self.unlocked then self:SetUnlocked(false) end
   wipe(ChatBannerDB)
   merge(ChatBannerDB, self.defaults)
   ChatBannerDB.lastVersion = self.version
