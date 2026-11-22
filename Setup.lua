@@ -51,7 +51,7 @@ end
 local function build()
   frame = CreateFrame("Frame", "ChatBannerSetup", UIParent,
     BackdropTemplateMixin and "BackdropTemplate" or nil)
-  frame:SetSize(440, 396)
+  frame:SetSize(440, 444)
   frame:SetPoint("CENTER", 0, 80)
   frame:SetFrameStrata("DIALOG")
   frame:SetClampedToScreen(true)
@@ -73,7 +73,7 @@ local function build()
 
   text(frame, "GameFontNormalLarge", 18, -16, "ChatBanner quick setup")
   text(frame, "GameFontHighlightSmall", 18, -40,
-    "The most important choices. Everything else is under /chatbanner.")
+    "The most important choices, you can change them any time.")
 
   -- 1. Position
   text(frame, "GameFontNormal", 18, -70, "1.  Where should the alerts appear?")
@@ -101,6 +101,15 @@ local function build()
     end)
     boxes[i] = cb
   end
+
+  -- Where to find the rest
+  local hint = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  hint:SetPoint("BOTTOMLEFT", 18, 52)
+  hint:SetWidth(404)
+  hint:SetJustifyH("LEFT")
+  hint:SetText("More to change, such as size, font, style, sound and every message type, "
+    .. "in |cffffd100Options > AddOns > ChatBanner|r or with |cffffd100/chatbanner|r.")
+  frame.hint = hint
 
   -- Bottom row
   local more = button(frame, "All options", 120, function()

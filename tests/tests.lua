@@ -293,6 +293,14 @@ test("hiding the whole UI does not count as finishing the setup", function()
   check(ChatBannerDB.setupDone == true, "done after the player closes it")
 end)
 
+test("the setup points to the full options", function()
+  CB:OpenSetup()
+  local hint = _G.ChatBannerSetup.hint.text
+  check(hint:find("Options > AddOns > ChatBanner", 1, true), "options path named")
+  check(hint:find("/chatbanner", 1, true), "command named")
+  closeSetup()
+end)
+
 test("/chatbanner setup opens it again", function()
   closeSetup()
   SlashCmdList.CHATBANNER("setup")
