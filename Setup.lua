@@ -13,8 +13,9 @@ CB.SETUP_GROUPS = {
   { label = "Guild and officer",                  keys = { "guild", "officer" } },
   { label = "Say, yell and emotes",               keys = { "say", "yell", "emote" } },
   { label = "Channels (General, Trade, LFG ...)", keys = { "channel" } },
-  { label = "NPCs and mobs talking",              keys = { "npc" } },
+  { label = "NPCs talking",                       keys = { "npc" } },
   { label = "System messages",                    keys = { "system" } },
+  { label = "Quest progress (mobs killed, items)", keys = { "quest" } },
 }
 
 local frame
@@ -50,7 +51,7 @@ end
 local function build()
   frame = CreateFrame("Frame", "ChatBannerSetup", UIParent,
     BackdropTemplateMixin and "BackdropTemplate" or nil)
-  frame:SetSize(440, 372)
+  frame:SetSize(440, 396)
   frame:SetPoint("CENTER", 0, 80)
   frame:SetFrameStrata("DIALOG")
   frame:SetClampedToScreen(true)

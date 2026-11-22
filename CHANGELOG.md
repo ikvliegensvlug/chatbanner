@@ -3,7 +3,7 @@
 ## 1.0.4
 
 - New quick setup on the first login: where the alerts go and which messages get one. `/chatbanner setup` or the **Quick setup** button in the options opens it again.
-- Alerts for NPCs and mobs talking are now off by default (players updating get this once too, shown in the setup).
+- Quest progress after killing mobs or looting quest items ("Kobold Vermin slain: 3/10") is now its own source, **off by default**. Other system messages still alert.
 
 ## 1.0.3
 

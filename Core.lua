@@ -19,10 +19,11 @@ CB.SOURCES = {
   { key = "yell",         label = "Yell" },
   { key = "emote",        label = "Emotes" },
   { key = "channel",      label = "Channels (General, Trade, LFG ...)" },
-  { key = "npc",          label = "NPCs and mobs talking" },
+  { key = "npc",          label = "NPCs talking" },
   { key = "boss",         label = "Boss emotes and whispers" },
   { key = "battleground", label = "Battleground messages" },
   { key = "system",       label = "System messages" },
+  { key = "quest",        label = "Quest progress (mobs killed, items)" },
 }
 
 CB.FONTS = {
@@ -60,9 +61,9 @@ CB.defaults = {
   ignoreOwn = true,
   sources = {
     whisper = true, party = true, raid = true, guild = true, officer = true,
-    say = true, yell = true, emote = true, channel = true,
-    npc = false,          -- mobs shouting in combat is mostly noise
+    say = true, yell = true, emote = true, channel = true, npc = true,
     boss = true, battleground = true, system = true,
+    quest = false,        -- a kill counter alert after every mob is mostly noise
   },
 }
 
@@ -91,7 +92,7 @@ CB.Merge = merge
 CB.NEWS = {
   { version = "1.0.4", notes = {
     "New quick setup with the most important choices: where the alerts go and which messages get one (/chatbanner setup).",
-    "Alerts for NPCs and mobs talking are now off by default; switch them on in the setup or the options.",
+    "Quest progress such as 'Kobold Vermin slain: 3/10' is now its own source and off by default, so killing mobs no longer gives alerts.",
   } },
   { version = "1.0.3", notes = {
     "The 'Follow the font size' option now sits right under the Row height slider it controls.",
@@ -146,14 +147,6 @@ function CB:Announce(isNew)
   ChatBannerDB.lastVersion = self.version
 end
 
--- Players updating from before the quick setup (1.0.4) get the new NPC default
--- too. The setup opens right after, so they see it and can switch it back on.
-function CB:Upgrade(isNew)
-  if not isNew and ChatBannerDB.setupDone == nil then
-    ChatBannerDB.sources.npc = false
-  end
-end
-
 function CB:ResetSettings()
   wipe(ChatBannerDB)
   merge(ChatBannerDB, self.defaults)
@@ -180,7 +173,6 @@ ev:SetScript("OnEvent", function(_, event, name)
     CB:InitAlerts()
   elseif event == "PLAYER_LOGIN" then
     CB:InitOptions()
-    CB:Upgrade(isNew)
     CB:Announce(isNew)
     CB:MaybeSetup()
   end

@@ -38,6 +38,47 @@ local EVENTS = {
 }
 CB.EVENTS = EVENTS
 
+-- Quest progress ("Kobold Vermin slain: 3/10") arrives as a system message.
+-- It gets its own source, so the kill counter can be off while system messages stay on.
+local QUEST = { source = "quest", tag = "Quest", chat = "SYSTEM", noSender = true }
+CB.QUEST = QUEST
+
+-- The game's own (translated) texts, with English fallbacks.
+local QUEST_FORMATS = {
+  { "ERR_QUEST_ADD_KILL_SII",         "%s slain: %d/%d" },
+  { "ERR_QUEST_ADD_PLAYER_KILL_SII",  "Players slain: %d/%d" },
+  { "ERR_QUEST_ADD_ITEM_SII",         "%s: %d/%d" },
+  { "ERR_QUEST_ADD_FOUND_SII",        "%s: %d/%d" },
+  { "ERR_QUEST_OBJECTIVE_COMPLETE_S", "%s (Complete)" },
+  { "ERR_QUEST_UNKNOWN_COMPLETE",     "Objective Complete." },
+}
+
+-- "%s slain: %d/%d" -> "^.+ slain: %d+/%d+$"
+local function toPattern(fmt)
+  local p = fmt:gsub("%%%d?%$?s", "<<S>>"):gsub("%%%d?%$?d", "<<D>>")
+  p = p:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
+  p = p:gsub("<<S>>", ".+"):gsub("<<D>>", "%%d+")
+  return "^" .. p .. "$"
+end
+CB.ToPattern = toPattern
+
+local questPatterns
+local function isQuestProgress(text)
+  if type(text) ~= "string" then return false end
+  if not questPatterns then
+    questPatterns = {}
+    for _, f in ipairs(QUEST_FORMATS) do
+      local fmt = _G[f[1]]
+      questPatterns[#questPatterns + 1] = toPattern(type(fmt) == "string" and fmt or f[2])
+    end
+  end
+  for _, p in ipairs(questPatterns) do
+    if text:find(p) then return true end
+  end
+  return false
+end
+CB.IsQuestProgress = isQuestProgress
+
 local holder, mover
 local active, pool = {}, {}
 
@@ -306,7 +347,9 @@ CB.CleanText = clean
 
 local function onEvent(_, event, ...)
   local info = EVENTS[event]
-  if not info or not CB.db.sources[info.source] then return end
+  if not info then return end
+  if event == "CHAT_MSG_SYSTEM" and isQuestProgress((...)) then info = QUEST end
+  if not CB.db.sources[info.source] then return end
   local args = runFilters(event, ...)
   if not args then return end
   local text, sender = args[1], args[2]

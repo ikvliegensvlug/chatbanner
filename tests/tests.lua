@@ -290,10 +290,36 @@ test("/chatbanner setup opens it again", function()
   closeSetup()
 end)
 
-test("NPC and mob alerts are off by default", function()
-  check(CB.db.sources.npc == false, "npc off")
-  Fire("CHAT_MSG_MONSTER_YELL", "You will die!", "Kobold Vermin")
-  check(#alerts() == 0, "no alert for a mob yelling")
+test("quest kill and item progress give no alert by default", function()
+  for _, msg in ipairs({ "Kobold Vermin slain: 3/10", "Candle: 2/8",
+                         "Kobold Vermin slain: 10/10 (Complete)", "Objective Complete." }) do
+    Fire("CHAT_MSG_SYSTEM", msg)
+  end
+  check(#alerts() == 0, "no quest progress alerts, got " .. #alerts())
+  Fire("CHAT_MSG_SYSTEM", "Thrall has come online.")
+  check(#alerts() == 1, "other system messages still alert")
+end)
+
+test("quest progress alerts when switched on, with its own label", function()
+  CB.db.sources.quest = true
+  Fire("CHAT_MSG_SYSTEM", "Kobold Vermin slain: 3/10")
+  local a = alerts()[1]
+  check(a and a.tag.text == "Quest", "quest label")
+  CB.db.sources.system = false
+  Fire("CHAT_MSG_SYSTEM", "Candle: 2/8")
+  check(#alerts() == 2, "quest alerts do not depend on system messages")
+end)
+
+test("quest texts follow the game's translated strings", function()
+  check(("Kobold slain: 1/8"):find(CB.ToPattern("%s slain: %d/%d")), "english pattern")
+  check(("Kobold getötet: 1/8"):find(CB.ToPattern("%1$s getötet: %2$d/%3$d")), "numbered pattern")
+  check(not ("Price: 5.00 (sale)"):find(CB.ToPattern("%s (Complete)")), "magic characters escaped")
+  check(not CB.IsQuestProgress("Thrall has come online."), "normal system text")
+end)
+
+test("NPCs talking still alert by default", function()
+  Fire("CHAT_MSG_MONSTER_YELL", "Honor your heroes!", "Herald of Thrall")
+  check(#alerts() == 1, "npc alert")
 end)
 
 test("setup checkboxes switch whole groups of sources", function()
@@ -301,13 +327,13 @@ test("setup checkboxes switch whole groups of sources", function()
   local boxes = setupBoxes()
   check(#boxes == #CB.SETUP_GROUPS, "one box per group, got " .. #boxes)
   check(boxes[2].checked == true, "party and raid shown as on")
-  check(boxes[6].checked == false, "npcs shown as off")
+  check(boxes[8].checked == false, "quest progress shown as off")
   boxes[2]:SetChecked(false)
   boxes[2].scripts.OnClick(boxes[2])
   check(CB.db.sources.party == false and CB.db.sources.raid == false, "party and raid off")
-  boxes[6]:SetChecked(true)
-  boxes[6].scripts.OnClick(boxes[6])
-  check(CB.db.sources.npc == true, "npcs on")
+  boxes[8]:SetChecked(true)
+  boxes[8].scripts.OnClick(boxes[8])
+  check(CB.db.sources.quest == true, "quest progress on")
   closeSetup()
 end)
 
@@ -317,17 +343,6 @@ test("the setup's move button unlocks, closing locks again", function()
   check(CB.unlocked, "unlocked")
   closeSetup()
   check(CB.unlocked == false, "locked after closing the setup")
-end)
-
-test("players updating from before the setup get NPC alerts off once", function()
-  ChatBannerDB.setupDone = nil
-  ChatBannerDB.sources.npc = true
-  CB:Upgrade(false)
-  check(ChatBannerDB.sources.npc == false, "npc switched off for updaters")
-  ChatBannerDB.setupDone = true
-  ChatBannerDB.sources.npc = true
-  CB:Upgrade(false)
-  check(ChatBannerDB.sources.npc == true, "a later choice is kept")
 end)
 
 local function printedText() return table.concat(Printed, "\n") end
