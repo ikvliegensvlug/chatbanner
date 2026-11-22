@@ -16,6 +16,7 @@ CB.SETUP_GROUPS = {
   { label = "NPCs talking",                       keys = { "npc" } },
   { label = "System messages",                    keys = { "system" } },
   { label = "Quest progress (mobs killed, items)", keys = { "quest" } },
+  { label = "Loot rolls (items to roll on, who won)", keys = { "loot" } },
 }
 
 local frame
@@ -51,7 +52,7 @@ end
 local function build()
   frame = CreateFrame("Frame", "ChatBannerSetup", UIParent,
     BackdropTemplateMixin and "BackdropTemplate" or nil)
-  frame:SetSize(440, 444)
+  frame:SetSize(440, 468)
   frame:SetPoint("CENTER", 0, 80)
   frame:SetFrameStrata("DIALOG")
   frame:SetClampedToScreen(true)

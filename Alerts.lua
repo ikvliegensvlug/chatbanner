@@ -35,6 +35,9 @@ local EVENTS = {
   CHAT_MSG_BG_SYSTEM_ALLIANCE = { source = "battleground", tag = "Battleground", chat = "BG_SYSTEM_ALLIANCE", noSender = true },
   CHAT_MSG_BG_SYSTEM_HORDE   = { source = "battleground", tag = "Battleground", chat = "BG_SYSTEM_HORDE", noSender = true },
   CHAT_MSG_SYSTEM            = { source = "system", tag = "System", chat = "SYSTEM", noSender = true },
+  -- loot rolls: the item you can roll on, and who won it (other loot lines stay in chat)
+  START_LOOT_ROLL            = { source = "loot", tag = "Roll", chat = "LOOT", noSender = true },
+  CHAT_MSG_LOOT              = { source = "loot", tag = "Roll", chat = "LOOT", noSender = true, rollsOnly = true },
 }
 CB.EVENTS = EVENTS
 
@@ -78,6 +81,40 @@ local function isQuestProgress(text)
   return false
 end
 CB.IsQuestProgress = isQuestProgress
+
+-- Of all loot lines, only the outcome of a roll gets an alert.
+local ROLL_FORMATS = {
+  { "LOOT_ROLL_WON",        "%s won: %s" },
+  { "LOOT_ROLL_YOU_WON",    "You won: %s" },
+  { "LOOT_ROLL_ALL_PASSED", "Everyone passed on: %s" },
+}
+
+local rollPatterns
+local function isRollResult(text)
+  if type(text) ~= "string" then return false end
+  if not rollPatterns then
+    rollPatterns = {}
+    for _, f in ipairs(ROLL_FORMATS) do
+      local fmt = _G[f[1]]
+      rollPatterns[#rollPatterns + 1] = toPattern(type(fmt) == "string" and fmt or f[2])
+    end
+  end
+  for _, p in ipairs(rollPatterns) do
+    if text:find(p) then return true end
+  end
+  return false
+end
+CB.IsRollResult = isRollResult
+
+-- "Roll for [Item]" when a roll window opens; the link shows in the item's quality colour.
+local function rollText(rollID)
+  local link = GetLootRollItemLink and GetLootRollItemLink(rollID)
+  if not link and GetLootRollItemInfo then
+    local _, name, count = GetLootRollItemInfo(rollID)
+    if name then link = "[" .. name .. "]" .. ((count or 1) > 1 and (" x" .. count) or "") end
+  end
+  return link and ("Roll for " .. link) or nil
+end
 
 local holder, mover
 local active, pool = {}, {}
@@ -350,6 +387,12 @@ local function onEvent(_, event, ...)
   if not info then return end
   if event == "CHAT_MSG_SYSTEM" and isQuestProgress((...)) then info = QUEST end
   if not CB.db.sources[info.source] then return end
+  if event == "START_LOOT_ROLL" then
+    local text = rollText((...))
+    if text then CB:Show(info, text) end
+    return
+  end
+  if info.rollsOnly and not isRollResult((...)) then return end
   local args = runFilters(event, ...)
   if not args then return end
   local text, sender = args[1], args[2]

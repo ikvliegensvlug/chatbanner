@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5
+
+- New source **Loot rolls**, on by default: an alert when an item comes up for a roll ("Roll for [Item]"), and one for who won it or when everyone passed. Other loot lines (looting, money, single rolls) stay in your chat only.
+
 ## 1.0.4
 
 - New quick setup on the first login: where the alerts go and which messages get one. `/chatbanner setup` or the **Quick setup** button in the options opens it again.

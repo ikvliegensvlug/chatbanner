@@ -24,6 +24,7 @@ CB.SOURCES = {
   { key = "battleground", label = "Battleground messages" },
   { key = "system",       label = "System messages" },
   { key = "quest",        label = "Quest progress (mobs killed, items)" },
+  { key = "loot",         label = "Loot rolls (items to roll on, who won)" },
 }
 
 CB.FONTS = {
@@ -64,6 +65,7 @@ CB.defaults = {
     say = true, yell = true, emote = true, channel = true, npc = true,
     boss = true, battleground = true, system = true,
     quest = false,        -- a kill counter alert after every mob is mostly noise
+    loot = true,          -- only items to roll on and who won them, not every loot line
   },
 }
 
@@ -90,6 +92,9 @@ CB.Merge = merge
 
 -- What changed per version, shown once in chat after an update (newest first).
 CB.NEWS = {
+  { version = "1.0.5", notes = {
+    "New source: loot rolls. An alert when an item comes up for a roll, and one for who won it. Other loot lines stay in your chat. Switch it off under Loot rolls.",
+  } },
   { version = "1.0.4", notes = {
     "New quick setup with the most important choices: where the alerts go and which messages get one (/chatbanner setup).",
     "Move and resize in one go: drag the box to move, drag its corner to resize. The proportions stay the same.",

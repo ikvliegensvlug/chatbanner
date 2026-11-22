@@ -6,7 +6,7 @@ Chat scrolls by fast in combat, while questing or when you look away for a momen
 
 ## Features
 
-- **Alerts for every kind of chat**: whispers (including Battle.net), party, raid and raid warnings, guild, officer, say, yell, emotes, channels such as General, Trade and LFG, NPCs, boss emotes, battleground messages, system messages and (if you want) quest progress. Loot is never shown.
+- **Alerts for every kind of chat**: whispers (including Battle.net), party, raid and raid warnings, guild, officer, say, yell, emotes, channels such as General, Trade and LFG, NPCs, boss emotes, battleground messages, system messages, quest progress (optional) and loot rolls (the item up for a roll and who won it; other loot lines stay in your chat).
 - **Quick setup**: on your first login a small window asks the two things that matter most: where the alerts go and which messages get one. Open it again with `/chatbanner setup`.
 - **Choose your sources**: switch each kind on or off in the options. Quest progress ("Kobold Vermin slain: 3/10") is a separate choice and off by default.
 - **Click to reply**: left-click an alert to answer in the same channel (or whisper back), right-click to dismiss it.

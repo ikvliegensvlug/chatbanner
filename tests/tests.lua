@@ -353,6 +353,40 @@ test("/chatbanner setup opens it again", function()
   closeSetup()
 end)
 
+test("an item up for a roll gives an alert with its link", function()
+  local link = "|cff0070dd|Hitem:2000::::::::|h[Archeus]|h|r"
+  GetLootRollItemLink = function(id) return id == 7 and link or nil end
+  Fire("START_LOOT_ROLL", 7, 60000)
+  local a = alerts()[1]
+  check(a and a.tag.text == "Roll", "roll label")
+  check(msgOf(a) == "Roll for " .. link, "item link shown, got " .. tostring(a and msgOf(a)))
+  GetLootRollItemLink = nil
+  GetLootRollItemInfo = function() return "icon", "Linen Cloth", 2, 1 end
+  Fire("START_LOOT_ROLL", 8, 60000)
+  check(msgOf(alerts()[1]) == "Roll for [Linen Cloth] x2", "name when no link")
+  GetLootRollItemInfo = nil
+end)
+
+test("only roll results among loot lines give an alert", function()
+  Fire("CHAT_MSG_LOOT", "You receive loot: [Linen Cloth].")
+  Fire("CHAT_MSG_LOOT", "Need Roll - 54 for [Archeus] by Bram")
+  Fire("CHAT_MSG_LOOT", "Bram has selected Need for: [Archeus]")
+  check(#alerts() == 0, "no alerts for other loot lines, got " .. #alerts())
+  Fire("CHAT_MSG_LOOT", "Bram won: [Archeus]")
+  Fire("CHAT_MSG_LOOT", "You won: [Archeus]")
+  Fire("CHAT_MSG_LOOT", "Everyone passed on: [Archeus]")
+  check(#alerts() == 3, "three roll results, got " .. #alerts())
+end)
+
+test("loot rolls can be switched off", function()
+  CB.db.sources.loot = false
+  GetLootRollItemLink = function() return "[Archeus]" end
+  Fire("START_LOOT_ROLL", 1, 60000)
+  Fire("CHAT_MSG_LOOT", "Bram won: [Archeus]")
+  check(#alerts() == 0, "no roll alerts")
+  GetLootRollItemLink = nil
+end)
+
 test("quest kill and item progress give no alert by default", function()
   for _, msg in ipairs({ "Kobold Vermin slain: 3/10", "Candle: 2/8",
                          "Kobold Vermin slain: 10/10 (Complete)", "Objective Complete." }) do
