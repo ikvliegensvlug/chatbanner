@@ -200,7 +200,7 @@ test("options panel controls change the settings", function()
   sliders[1]:SetValue(803)          -- snaps to the 10-step
   check(CB.db.width == 800, "width set to " .. tostring(CB.db.width))
   check(_G.ChatBannerFrame.w == 800, "alerts resized")
-  local whisperBox = boxes[2]        -- order: grow upwards, then the sources
+  local whisperBox = boxes[3]        -- order: follow font size, grow upwards, then the sources
   whisperBox:SetChecked(false)
   whisperBox:Click()
   check(CB.db.sources.whisper == false, "whisper switched off")
