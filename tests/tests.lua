@@ -546,6 +546,10 @@ test("alone, items taken from the loot window count once", function()
   check(#items == 2, "in a group the chat line decides")
   InGroup = false
   GetNumLootItems, GetLootSlotLink = nil, nil
+  SlashCmdList.CHATBANNER("summary")
+  check(summary().shown and summary().title.text == "Deadmines (so far)", "the run so far, got " .. summary().title.text)
+  closeSummary()
+  check(CB.db.lootRun and #CB.db.lootRun.items == 2, "still in the run")
   leaveDungeon()
   closeSummary()
 end)

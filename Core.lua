@@ -204,7 +204,7 @@ local HELP = {
   "/chatbanner unlock  - move and resize the alerts (lock to finish)",
   "/chatbanner reset  - restore all default settings",
   "/chatbanner news  - show what changed in recent versions",
-  "/chatbanner summary  - the scoreboard of the last dungeon (stats and loot)",
+  "/chatbanner summary  - the scoreboard of this dungeon so far, or of the last one",
   "/chatbanner summary test  - a sample scoreboard with your group",
 }
 
@@ -228,7 +228,7 @@ SlashCmdList.CHATBANNER = function(msg)
   elseif (cmd == "summary" or cmd == "loot") and arg == "test" then
     CB:OpenSummary(CB:SampleRun())
   elseif cmd == "summary" or cmd == "loot" then
-    CB:OpenSummary(CB.db.lastLoot)
+    CB:OpenSummary(CB:RunSoFar() or CB.db.lastLoot)
   elseif cmd == "debug" then
     if CB.db.debug then
       CB.db.debug = nil

@@ -145,6 +145,20 @@ function CB:FinishLootRun()
   end
 end
 
+-- The run you are in, as far as it has come (for /chatbanner summary inside).
+-- The meter is only readable out of combat; in a fight it shows the loot only.
+function CB:RunSoFar()
+  local run = self.db.lootRun
+  if not run then return nil end
+  local copy = { name = run.name .. " (so far)", items = run.items, rolls = run.rolls,
+                 start = run.start, statsFrom = run.statsFrom }
+  copy.duration = (time and run.start and (time() - run.start)) or 0
+  if self.CollectStats and not (InCombatLockdown and InCombatLockdown()) then
+    pcall(self.CollectStats, self, copy)
+  end
+  return copy
+end
+
 -- Called on every zone change: start, continue or finish a run.
 function CB:CheckLootRun()
   local name = inGroupInstance()
