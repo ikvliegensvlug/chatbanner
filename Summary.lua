@@ -78,7 +78,7 @@ function CB:SummaryCards(run)
       end
       local p = stats.players[who]
       sec.cards[#sec.cards + 1] = { cat = c, who = who, value = value, text = num(value), sub = sub,
-                                    class = p and p.class, isMe = p and p.isMe }
+                                    class = p and p.class, isMe = p and p.isMe, guid = p and p.guid }
     end
   end
   return sections
@@ -160,11 +160,19 @@ local frame
 local cards, headers, lootRows = {}, {}, {}
 local W, PAD, CARD_W, CARD_H, GAP = 620, 22, 186, 64, 8
 
-local function unitFor(name)
+-- The unit of a player still in your group: by GUID first (the meter may show a
+-- longer name than UnitName, such as "Aztek Ensteek" for "Aztek"), then by name.
+local function unitFor(name, guid)
+  for _, unit in ipairs(CB.GroupUnits()) do
+    if guid and UnitGUID and UnitGUID(unit) == guid then return unit end
+  end
   for _, unit in ipairs(CB.GroupUnits()) do
     local n = UnitName(unit)
     if n and n == name and (not UnitExists or UnitExists(unit)) then return unit end
   end
+  -- the meter's longer name starts with the game's name
+  local me = UnitName("player")
+  if me and name:sub(1, #me + 1) == me .. " " then return "player" end
 end
 
 -- Make a texture round with a mask texture (the old Texture:SetMask does
@@ -180,8 +188,8 @@ end
 
 -- The player's face while they are in the group; otherwise their class emblem.
 -- The emblem texture has no mask (the game refuses tex coords on masked textures).
-local function setPortrait(c, name, class, isMe)
-  local unit = isMe and "player" or unitFor(name)
+local function setPortrait(c, name, class, isMe, guid)
+  local unit = isMe and "player" or unitFor(name, guid)
   if unit and SetPortraitTexture then
     SetPortraitTexture(c.portrait, unit)   -- already round
     c.portrait:Show()
@@ -222,10 +230,11 @@ local function makeCard()
   c.ring:SetTexture("Interface\\Buttons\\WHITE8X8")
   c.ring:SetVertexColor(0.72, 0.57, 0.24, 1)
   round(c.ring)
-  c.portrait = c:CreateTexture(nil, "ARTWORK")
+  -- explicitly above the gold ring (BORDER) and below the category badge (OVERLAY 1, 2)
+  c.portrait = c:CreateTexture(nil, "ARTWORK", nil, 7)
   c.portrait:SetSize(48, 48)
   c.portrait:SetPoint("CENTER", c.ring, "CENTER")
-  c.classIcon = c:CreateTexture(nil, "ARTWORK")
+  c.classIcon = c:CreateTexture(nil, "ARTWORK", nil, 7)
   c.classIcon:SetSize(48, 48)
   c.classIcon:SetPoint("CENTER", c.ring, "CENTER")
   -- category icon where a unit frame shows the level
@@ -257,7 +266,7 @@ end
 local function fillCard(c, card)
   local cat = card.cat
   c.badge:SetTexture("Interface\\Icons\\" .. cat.icon)
-  setPortrait(c, card.who, card.class, card.isMe)
+  setPortrait(c, card.who, card.class, card.isMe, card.guid)
   c.title:SetText(cat.title)
   c.name:SetText(card.who)
   c.name:SetTextColor(classColor(card.class))

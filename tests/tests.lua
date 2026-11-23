@@ -467,7 +467,7 @@ local function fight(id, duration, data)
     local list = {}
     for _, r in ipairs(rows) do
       list[#list + 1] = { name = r[1], totalAmount = r[2], classFilename = r[3], sourceDisplayType = r[4],
-                          isLocalPlayer = r[5] }
+                          isLocalPlayer = r[5], sourceGUID = r[6] }
     end
     s[kinds[field]] = list
   end
@@ -601,6 +601,22 @@ test("/chatbanner summary test shows a sample with your name", function()
   end
   check(emblem and emblem.atlas == "classicon-warrior", "players outside your group get their round class icon")
   closeSummary()
+end)
+
+test("players are found by GUID or by the start of a longer name", function()
+  MeterSessions = {}
+  GroupNames.party1 = "Bram"
+  enterDungeon("Wailing Caverns")
+  fight(1, 60, { dmg = { { "Bram Steelhand", 900, "WARRIOR", nil, nil, "Player-Bram" } },
+                 taken = { { "Aztek Ensteek", 400, "DRUID" } } })
+  Portraits = {}
+  leaveDungeon()
+  local units = table.concat(Portraits, ",")
+  check(units:find("party1", 1, true), "Bram by GUID, got " .. units)
+  check(units:find("player", 1, true), "you by the start of your name, got " .. units)
+  closeSummary()
+  GroupNames.party1 = nil
+  MeterSessions = {}
 end)
 
 test("your own card shows your face even when the meter names you differently", function()
