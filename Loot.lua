@@ -130,6 +130,21 @@ local function inGroupInstance()
   end
 end
 
+-- The last finished runs, newest first. Older versions kept only one (db.lastLoot).
+local MAX_RUNS = 5
+function CB:Runs()
+  local db = self.db
+  db.runs = db.runs or {}
+  if db.lastLoot then
+    table.insert(db.runs, 1, db.lastLoot)
+    db.lastLoot = nil
+  end
+  while #db.runs > MAX_RUNS do table.remove(db.runs) end
+  return db.runs
+end
+
+function CB:LastRun() return self:Runs()[1] end
+
 function CB:FinishLootRun()
   local run = self.db.lootRun
   if not run then return end
@@ -143,7 +158,8 @@ function CB:FinishLootRun()
   run.duration = (time and run.start and (time() - run.start)) or 0
   if self.CollectStats then pcall(self.CollectStats, self, run) end
   if #run.items > 0 or (self.HasStats and self:HasStats(run)) then
-    self.db.lastLoot = run
+    table.insert(self:Runs(), 1, run)
+    self:Runs()   -- keep at most MAX_RUNS
     if self.db.lootSummary and self.OpenSummary then self:OpenSummary(run) end
   end
 end
@@ -154,7 +170,7 @@ function CB:RunSoFar()
   local run = self.db.lootRun
   if not run then return nil end
   local copy = { name = run.name .. " (so far)", items = run.items, rolls = run.rolls,
-                 start = run.start, statsFrom = run.statsFrom }
+                 start = run.start, statsFrom = run.statsFrom, soFar = true }
   copy.duration = (time and run.start and (time() - run.start)) or 0
   if self.CollectStats and not (InCombatLockdown and InCombatLockdown()) then
     pcall(self.CollectStats, self, copy)

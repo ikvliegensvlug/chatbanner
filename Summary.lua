@@ -413,6 +413,18 @@ local function build()
   frame.meta:SetPoint("TOP", 0, -30)
   frame.meta:SetTextColor(0.75, 0.7, 0.6)
 
+  -- browse the last runs: Older goes back, Newer forward up to the run you are in
+  frame.older = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  frame.older:SetSize(80, 20)
+  frame.older:SetText("< Older")
+  frame.older:SetPoint("TOPLEFT", PAD, -24)
+  frame.older:SetScript("OnClick", function() CB:BrowseSummary(1) end)
+  frame.newer = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  frame.newer:SetSize(80, 20)
+  frame.newer:SetText("Newer >")
+  frame.newer:SetPoint("TOPRIGHT", -42, -24)
+  frame.newer:SetScript("OnClick", function() CB:BrowseSummary(-1) end)
+
   frame.post = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
   frame.post:SetSize(130, 24)
   frame.post:SetText("Post to party")
@@ -502,6 +514,18 @@ function CB:SampleRun()
   }
 end
 
+-- Older (+1) or newer (-1) than the run in the window.
+function CB:BrowseSummary(step)
+  if not (frame and frame.pos) then return end
+  local runs, pos = self:Runs(), frame.pos + step
+  if pos >= 1 and runs[pos] then
+    self:OpenSummary(runs[pos])
+  elseif pos <= 0 then
+    local now = self:RunSoFar()
+    if now then self:OpenSummary(now) end
+  end
+end
+
 function CB:OpenSummary(run)
   if not run then
     self:Print("No dungeon summary yet. It appears when you leave a dungeon or raid; "
@@ -513,7 +537,19 @@ function CB:OpenSummary(run)
   frame.title:SetText(run.name)
   local meta = clock(run.duration)
   if run.stats and run.stats.kills > 0 then meta = meta .. "  -  " .. run.stats.kills .. " enemies slain" end
+  -- where this run sits among the kept runs: 0 = the run you are in
+  local runs, pos = self:Runs(), nil
+  if run.soFar then pos = 0 end
+  for i, r in ipairs(runs) do if r == run then pos = i end end
+  frame.pos = pos
+  if pos and pos > 0 and run.start and date then meta = meta .. "  -  " .. date("%d %b %H:%M", run.start) end
   frame.meta:SetText(meta)
+  frame.older:SetShown(pos ~= nil)
+  frame.newer:SetShown(pos ~= nil)
+  if pos then
+    if pos < #runs then frame.older:Enable() else frame.older:Disable() end
+    if pos > 1 or (pos == 1 and self.db.lootRun) then frame.newer:Enable() else frame.newer:Disable() end
+  end
 
   for _, c in ipairs(cards) do c:Hide() end
   for _, h in ipairs(headers) do h:Hide(); h.left:Hide(); h.right:Hide() end

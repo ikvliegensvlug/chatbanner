@@ -598,14 +598,14 @@ test("leaving a dungeon opens the scoreboard with portraits", function()
     if r.parent == f and rawget(r, "itemLink") and r.shown then rows = rows + 1 end
   end
   check(rows == 2, "green and blue loot, no grey, got " .. rows)
-  check(CB.db.lootRun == nil and CB.db.lastLoot.name == "Wailing Caverns", "run finished and kept")
+  check(CB.db.lootRun == nil and CB:LastRun().name == "Wailing Caverns", "run finished and kept")
   closeSummary()
   SlashCmdList.CHATBANNER("summary")
   check(summary().shown, "/chatbanner summary opens it again")
   closeSummary()
 
   -- post to party
-  local run = CB.db.lastLoot
+  local run = CB:LastRun()
   Sent = {}
   InGroup = false
   check(CB:PostSummary(run) == false and #Sent == 0, "not in a group: nothing sent")
@@ -649,6 +649,36 @@ test("the loot list puts the best first and its filter cycles green, blue, purpl
   end
   check(f.shown and empty, "filter stays, with a note that nothing matches")
   CB.db.lootMinQuality = 3
+  closeSummary()
+end)
+
+test("the last 5 runs are kept and can be browsed", function()
+  CB.db.runs, CB.db.lastLoot = nil, { name = "Old", duration = 60, items = {}, rolls = {} }
+  check(CB:LastRun().name == "Old" and CB.db.lastLoot == nil, "the one run from before is kept")
+  MeterSessions = {}
+  for i = 1, 6 do
+    enterDungeon("Run " .. i)
+    Fire("CHAT_MSG_LOOT", "You receive loot: " .. BLUE .. ".")
+    leaveDungeon()
+    closeSummary()
+  end
+  local runs = CB:Runs()
+  check(#runs == 5 and runs[1].name == "Run 6" and runs[5].name == "Run 2", "newest five, got " .. #runs)
+  enterDungeon("Deadmines")
+  SlashCmdList.CHATBANNER("summary")
+  local f = summary()
+  check(f.title.text == "Deadmines (so far)" and f.older.shown and f.newer.disabled, "the run you are in: only Older")
+  f.older:Click()
+  check(f.title.text == "Run 6" and not f.newer.disabled, "back to the last finished run")
+  for _ = 1, 4 do f.older:Click() end
+  check(f.title.text == "Run 2" and f.older.disabled, "the oldest kept run")
+  for _ = 1, 5 do f.newer:Click() end
+  check(f.title.text == "Deadmines (so far)", "forward to the run you are in, got " .. f.title.text)
+  closeSummary()
+  CB:OpenSummary(CB:SampleRun())
+  check(not f.older.shown and not f.newer.shown, "no browsing in the sample")
+  closeSummary()
+  leaveDungeon()
   closeSummary()
 end)
 
@@ -788,7 +818,7 @@ test("dying and running back does not end the dungeon", function()
   enterDungeon("Deadmines")
   Fire("CHAT_MSG_LOOT", "Lisa receives loot: " .. BLUE .. ".")
   leaveDungeon()
-  check(#CB.db.lastLoot.items == 2, "both items in one summary")
+  check(#CB:LastRun().items == 2, "both items in one summary")
   closeSummary()
   UnitIsDeadOrGhost = nil
 end)
