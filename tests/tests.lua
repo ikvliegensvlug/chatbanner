@@ -630,6 +630,19 @@ test("your own card shows your face even when the meter names you differently", 
   MeterSessions = {}
 end)
 
+test("/chatbanner debug keeps loot lines and how they were read", function()
+  SlashCmdList.CHATBANNER("debug")
+  Fire("CHAT_MSG_LOOT", "You receive loot: " .. GREEN .. ".")
+  SecretValues = true
+  Fire("CHAT_MSG_LOOT", "You receive loot: " .. GREEN .. ".")
+  SecretValues = false
+  local log = CB.db.debug.loot
+  check(#log == 2 and log[1].parsed == "you -> " .. GREEN .. " q2", "parsed line, got " .. tostring(log[1] and log[1].parsed))
+  check(log[2].text == "<secret>", "secret lines are marked")
+  SlashCmdList.CHATBANNER("debug")
+  check(CB.db.debug == nil, "off again")
+end)
+
 test("numbers and times are short and readable", function()
   check(CB.FormatNumber(912) == "912" and CB.FormatNumber(1410) == "1,410" and CB.FormatNumber(48213) == "48.2k", "numbers")
   check(CB.FormatClock(2292) == "38:12" and CB.FormatClock(3725) == "1:02:05", "times")

@@ -103,6 +103,14 @@ function CB:CollectStats(run)
           local duration = readable(session.durationSeconds) and session.durationSeconds or s.duration
           for _, src in ipairs(session.combatSources) do
             pcall(addSource, stats, field, src, duration)
+            if self.db.debug then
+              local log = self.db.debug.meter
+              log[#log + 1] = string.format("session %s %s: %s %s%s", tostring(s.id), field,
+                readable(src.name) and tostring(src.name) or "<secret>",
+                readable(src.totalAmount) and tostring(src.totalAmount) or "<secret>",
+                src.isLocalPlayer == true and " (you)" or "")
+              while #log > 60 do table.remove(log, 1) end
+            end
           end
         end
       end

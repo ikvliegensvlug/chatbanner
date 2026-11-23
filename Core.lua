@@ -229,6 +229,14 @@ SlashCmdList.CHATBANNER = function(msg)
     CB:OpenSummary(CB:SampleRun())
   elseif cmd == "summary" or cmd == "loot" then
     CB:OpenSummary(CB.db.lastLoot)
+  elseif cmd == "debug" then
+    if CB.db.debug then
+      CB.db.debug = nil
+      CB:Print("Debug log off and cleared.")
+    else
+      CB.db.debug = { loot = {}, meter = {} }
+      CB:Print("Debug log on: loot lines and damage meter numbers are kept until /chatbanner debug again.")
+    end
   elseif cmd == "news" then
     if not CB:ShowNews() then CB:Print("No release notes for this version.") end
   else

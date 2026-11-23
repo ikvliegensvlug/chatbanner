@@ -210,6 +210,24 @@ function CB:NoteLoot(text)
   table.insert(run.items, { who = who, link = link, q = q })
 end
 
+-- /chatbanner debug: keep the last loot lines and what ChatBanner made of them,
+-- in the saved variables, so a problem in the game can be looked at afterwards.
+function CB:DebugLoot(text)
+  local log = self.db.debug.loot
+  local entry = { run = self.db.lootRun ~= nil }
+  if issecretvalue and issecretvalue(text) then
+    entry.text = "<secret>"
+  else
+    entry.text = tostring(text)
+    local ok, who, link = pcall(parseLoot, text)
+    entry.parsed = ok and (link and ((who or "you") .. " -> " .. link .. " q" .. quality(link)) or "no match") or ("error: " .. tostring(who))
+    local ok2, roll = pcall(parseRoll, text)
+    if ok2 and roll then entry.roll = roll.kind end
+  end
+  log[#log + 1] = entry
+  while #log > 30 do table.remove(log, 1) end
+end
+
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_ALIVE",
                      "PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED", "CHAT_MSG_LOOT" }) do
@@ -218,6 +236,7 @@ end
 ev:SetScript("OnEvent", function(_, event, text)
   if not CB.db then return end
   if event == "CHAT_MSG_LOOT" then
+    if CB.db.debug then CB:DebugLoot(text) end
     CB:NoteLoot(text)
   elseif event == "PLAYER_REGEN_ENABLED" then
     if CB.finishAfterCombat then CB:FinishLootRun() end
