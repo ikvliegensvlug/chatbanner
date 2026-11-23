@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.6
+
+- **Dungeon scoreboard** instead of the loot alerts: when you leave a dungeon or raid, a window in Blizzard's own dialog style shows the stars of the run with their portraits: most damage (with DPS), most healing, most buffs given, most damage taken, highest hit, biggest heal, killing blows, died most and biggest hit taken. Categories nobody scored in are left out. The loot follows, with who won each item, their roll and who else needed. **Post to party** (or raid) shares it in chat. `/chatbanner summary` opens it again.
+- **Need rolls**: an alert when someone selects Need on an item ("Bram: Need on [Ironfoe]"), and the winner's roll on the result alert ("Aztek won: [Ironfoe] (Need 87)").
+
 ## 1.0.5
 
 - New source **Loot rolls**, on by default: an alert when an item comes up for a roll ("Roll for [Item]"), and one for who won it or when everyone passed. Other loot lines (looting, money, single rolls) stay in your chat only.

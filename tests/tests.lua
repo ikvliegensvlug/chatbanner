@@ -367,10 +367,10 @@ test("an item up for a roll gives an alert with its link", function()
   GetLootRollItemInfo = nil
 end)
 
-test("only roll results among loot lines give an alert", function()
+test("only roll results and Need among loot lines give an alert", function()
   Fire("CHAT_MSG_LOOT", "You receive loot: [Linen Cloth].")
   Fire("CHAT_MSG_LOOT", "Need Roll - 54 for [Archeus] by Bram")
-  Fire("CHAT_MSG_LOOT", "Bram has selected Need for: [Archeus]")
+  Fire("CHAT_MSG_LOOT", "Bram has selected Greed for: [Archeus]")
   check(#alerts() == 0, "no alerts for other loot lines, got " .. #alerts())
   Fire("CHAT_MSG_LOOT", "Bram won: [Archeus]")
   Fire("CHAT_MSG_LOOT", "You won: [Archeus]")
@@ -378,11 +378,23 @@ test("only roll results among loot lines give an alert", function()
   check(#alerts() == 3, "three roll results, got " .. #alerts())
 end)
 
+test("selecting Need gives an alert with who and which item", function()
+  Fire("CHAT_MSG_LOOT", "Bram-Realm has selected Need for: [Ironfoe]")
+  local a = alerts()[1]
+  check(a and a.tag.text == "Need", "Need label")
+  check(msgOf(a):find("Bram", 1, true) and msgOf(a):find("Need on [Ironfoe]", 1, true), "who and item, got " .. msgOf(a))
+  Fire("CHAT_MSG_LOOT", "You have selected Need for: [Ironfoe]")
+  local mine = false
+  for _, x in ipairs(alerts()) do if msgOf(x):find("Aztek", 1, true) then mine = true end end
+  check(#alerts() == 2 and mine, "your own Need under your name")
+end)
+
 test("loot rolls can be switched off", function()
   CB.db.sources.loot = false
   GetLootRollItemLink = function() return "[Archeus]" end
   Fire("START_LOOT_ROLL", 1, 60000)
   Fire("CHAT_MSG_LOOT", "Bram won: [Archeus]")
+  Fire("CHAT_MSG_LOOT", "Bram has selected Need for: [Archeus]")
   check(#alerts() == 0, "no roll alerts")
   GetLootRollItemLink = nil
 end)
@@ -402,6 +414,20 @@ local function leaveDungeon()
   Fire("PLAYER_ENTERING_WORLD")
 end
 
+local summary = function() return _G.ChatBannerSummary end
+local function closeSummary() if summary() then summary():Hide() end end
+
+-- combat log flags as the game sends them
+local ME, MATE, ENEMY, MYPET = 0x401, 0x402, 0x848, 0x1001
+local ts = 5000
+local function combat(sub, src, srcFlags, dst, dstFlags, ...)
+  ts = ts + 1
+  CombatEvent = { ts, sub, false, src and ("G-" .. src), src, srcFlags or 0, 0,
+                  dst and ("G-" .. dst), dst, dstFlags or 0, 0, ... }
+  CombatEvent.n = 11 + select("#", ...)
+  Fire("COMBAT_LOG_EVENT_UNFILTERED")
+end
+
 test("loot lines are read with who got which item", function()
   local who, link = CB.ParseLoot("Bram-Realm receives loot: " .. BLUE .. ".")
   check(who == "Bram-Realm" and link == BLUE, "someone else")
@@ -411,41 +437,136 @@ test("loot lines are read with who got which item", function()
   check(CB.ItemQuality(BLUE) == 3 and CB.ItemQuality(PURPLE) == 4 and CB.ItemQuality(GREEN) == 2, "quality from colour")
 end)
 
+test("roll lines are read with who, item and roll", function()
+  local r = CB.ParseRoll("Need Roll - 87 for " .. PURPLE .. " by Bram-Realm")
+  check(r.kind == "needroll" and r.roll == 87 and r.link == PURPLE and r.who == "Bram", "need roll")
+  r = CB.ParseRoll("You have selected Need for: " .. PURPLE)
+  check(r.kind == "need" and r.who == "Aztek", "your own need")
+  r = CB.ParseRoll("Everyone passed on: " .. PURPLE)
+  check(r.kind == "passed" and r.who == nil, "everyone passed")
+  r = CB.ParseRoll("You won: " .. PURPLE)
+  check(r.kind == "won" and r.who == "Aztek", "you won, not a player called You")
+end)
+
 test("blue and better is the default for the loot summary", function()
   check(CB.db.lootMinQuality == 3, "blue by default")
 end)
 
-test("leaving a dungeon shows who got which items", function()
+test("the winner's roll shows on the result alert and in the summary", function()
+  enterDungeon("Wailing Caverns")
+  Fire("CHAT_MSG_LOOT", "Bram has selected Need for: " .. PURPLE)
+  Fire("CHAT_MSG_LOOT", "You have selected Need for: " .. PURPLE)
+  Fire("CHAT_MSG_LOOT", "Need Roll - 54 for " .. PURPLE .. " by Bram")
+  Fire("CHAT_MSG_LOOT", "Need Roll - 87 for " .. PURPLE .. " by Aztek")
+  Fire("CHAT_MSG_LOOT", "You won: " .. PURPLE)
+  Fire("CHAT_MSG_LOOT", "You receive loot: " .. PURPLE .. ".")
+  local won
+  for _, a in ipairs(alerts()) do if msgOf(a):find("You won", 1, true) then won = a end end
+  check(won and msgOf(won):find("(Need 87)", 1, true), "roll on the result alert, got " .. tostring(won and msgOf(won)))
+  local rows = CB:SummaryLoot(CB.db.lootRun)
+  check(#rows == 1 and rows[1].text == "won by Aztek (Need 87) - also Need: Bram 54",
+    "loot row, got " .. tostring(rows[1] and rows[1].text))
+  leaveDungeon()
+  closeSummary()
+end)
+
+test("the combat log counts damage, healing, buffs and more per player", function()
+  GroupNames.party1 = "Bram"; GroupClasses.Bram = "WARRIOR"
+  enterDungeon("Wailing Caverns")
+  combat("SWING_DAMAGE", "Aztek", ME, "Kobold", ENEMY, 300)
+  combat("SPELL_DAMAGE", "Aztek", ME, "Kobold", ENEMY, 1, "Ferocious Bite", 1, 912)
+  combat("SPELL_DAMAGE", "Wolf", MYPET, "Kobold", ENEMY, 2, "Bite", 1, 100)
+  combat("SPELL_DAMAGE", "Bram", MATE, "Kobold", ENEMY, 3, "Heroic Strike", 1, 400)
+  combat("SPELL_DAMAGE", "Kobold", ENEMY, "Bram", MATE, 4, "Thrash", 1, 250)
+  combat("SWING_DAMAGE", "Mutanus", ENEMY, "Bram", MATE, 1840)
+  combat("SPELL_HEAL", "Aztek", ME, "Bram", MATE, 5, "Healing Touch", 8, 1000, 200)
+  combat("SPELL_AURA_APPLIED", "Aztek", ME, "Bram", MATE, 6, "Mark of the Wild", 8, "BUFF")
+  combat("SPELL_AURA_APPLIED", "Aztek", ME, "Aztek", ME, 7, "Cat Form", 1, "BUFF")
+  combat("SPELL_AURA_APPLIED", "Kobold", ENEMY, "Kobold", ENEMY, 8, "Enrage", 1, "BUFF")
+  combat("PARTY_KILL", "Aztek", ME, "Kobold", ENEMY)
+  combat("UNIT_DIED", nil, 0, "Kobold", ENEMY)
+  combat("UNIT_DIED", nil, 0, "Bram", MATE)
+  local s = CB.db.lootRun.stats
+  local a, b = s.players.Aztek, s.players.Bram
+  check(a.dmg == 1312, "Aztek's damage with the pet, got " .. a.dmg)
+  check(b.dmg == 400 and b.taken == 2090, "Bram dealt 400 and took 2090")
+  check(a.heal == 800, "healing without overheal, got " .. a.heal)
+  check(a.buffs == 1, "only buffs on someone else count, got " .. a.buffs)
+  check(a.kb == 1 and s.kills == 1 and b.deaths == 1, "kills and deaths")
+  check(s.rec.hit.who == "Aztek" and s.rec.hit.amount == 912 and s.rec.hit.what == "Ferocious Bite", "highest hit")
+  check(s.rec.heal.amount == 800 and s.rec.taken.amount == 1840 and s.rec.taken.what == "Mutanus",
+    "biggest heal and hit taken")
+  check(a.class == "DRUID" and b.class == "WARRIOR", "classes noted")
+  leaveDungeon()
+  closeSummary()
+  GroupNames.party1 = nil
+end)
+
+test("nothing is counted outside a dungeon", function()
+  IsInInstance = function() return false, "none" end
+  Fire("PLAYER_ENTERING_WORLD")
+  combat("SWING_DAMAGE", "Aztek", ME, "Kobold", ENEMY, 300)
+  check(CB.db.lootRun == nil, "no run")
+end)
+
+test("leaving a dungeon opens the scoreboard with portraits", function()
+  GroupNames.party1 = "Bram"; GroupClasses.Bram = "WARRIOR"
   CB.db.lootMinQuality = 2
   enterDungeon("Wailing Caverns")
+  combat("SPELL_DAMAGE", "Aztek", ME, "Kobold", ENEMY, 1, "Ferocious Bite", 1, 912)
+  combat("SWING_DAMAGE", "Kobold", ENEMY, "Bram", MATE, 50)
   Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. BLUE .. ".")
   Fire("CHAT_MSG_LOOT", "Lisa receives loot: " .. GREEN .. ".")
-  Fire("CHAT_MSG_LOOT", "You receive loot: " .. PURPLE .. ".")
-  Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. PURPLE .. ".")
-  check(#alerts() == 0, "nothing during the dungeon")
+  Fire("CHAT_MSG_LOOT", "Bram receives loot: |cff9d9d9d|Hitem:1::::::::|h[Broken Fang]|h|r.")
+  Portraits = {}
+  GroupNames.party1 = nil                     -- Bram left the group before the end
+  Now = Now + 38 * 60 + 12
   leaveDungeon()
-  local list = alerts()
-  check(#list == 4, "summary and three players, got " .. #list)
-  local function find(s)
-    for _, a in ipairs(list) do if msgOf(a):find(s, 1, true) then return a end end
+  local f = summary()
+  check(f and f.shown, "scoreboard shown")
+  check(f.title.text == "Wailing Caverns" and f.meta.text:find("38:12", 1, true), "name and time, got " .. f.meta.text)
+  local titles = {}
+  for _, c in ipairs(AllFrames) do
+    if c.parent == f and rawget(c, "badge") and c.shown then titles[#titles + 1] = c.title.text end
   end
-  local summary = find("Wailing Caverns")
-  check(summary and summary.tag.text == "Summary", "summary alert")
-  local bram = find("Bram")
-  check(bram and msgOf(bram):find("Ironfoe", 1, true) and msgOf(bram):find("Archeus", 1, true),
-    "Bram's two items in one alert")
-  check(find("Aztek"), "your own item under your name")
-  check(find("Gnoll Hide"), "green items included when chosen")
+  local all = table.concat(titles, ",")
+  check(all:find("Most damage", 1, true) and all:find("Highest hit", 1, true) and all:find("Most damage taken", 1, true),
+    "cards with data, got " .. all)
+  check(not all:find("Most healing", 1, true) and not all:find("Died most", 1, true), "empty categories left out")
+  check(#Portraits >= 1 and Portraits[1] == "player", "your own face as portrait")
+  local rows = 0
+  for _, r in ipairs(AllFrames) do
+    if r.parent == f and rawget(r, "itemLink") and r.shown then rows = rows + 1 end
+  end
+  check(rows == 2, "green and blue loot, no grey, got " .. rows)
   check(CB.db.lootRun == nil and CB.db.lastLoot.name == "Wailing Caverns", "run finished and kept")
-  Printed = {}
-  SlashCmdList.CHATBANNER("loot")
-  check(#Printed == 4 and Printed[2]:find("Bram", 1, true), "/chatbanner loot repeats it in chat")
-  check(Printed[1]:find("green or better", 1, true), "names the chosen quality")
-  CB.db.lootMinQuality = 3
-  Printed = {}
-  SlashCmdList.CHATBANNER("loot")
-  check(#Printed == 3 and not table.concat(Printed):find("Gnoll Hide", 1, true), "blue and better: green left out")
-  check(Printed[1]:find("blue or better", 1, true), "names blue")
+  closeSummary()
+  SlashCmdList.CHATBANNER("summary")
+  check(summary().shown, "/chatbanner summary opens it again")
+  closeSummary()
+
+  -- post to party
+  local run = CB.db.lastLoot
+  Sent = {}
+  InGroup = false
+  check(CB:PostSummary(run) == false and #Sent == 0, "not in a group: nothing sent")
+  InGroup = true
+  CB:PostSummary(run)
+  check(#Sent >= 2 and Sent[1]:find("^PARTY:ChatBanner: Wailing Caverns %(38:12"), "header line, got " .. tostring(Sent[1]))
+  local text = table.concat(Sent, "\n")
+  check(text:find("Highest hit: Aztek 912 (Ferocious Bite)", 1, true), "categories posted")
+  check(text:find("[Archeus]", 1, true), "loot posted")
+  for _, line in ipairs(Sent) do check(#line - 6 <= 255, "lines fit in chat") end
+  InRaid = true
+  Sent = {}
+  CB:PostSummary(run)
+  check(Sent[1]:find("^RAID:"), "raid chat in a raid")
+  InGroup, InRaid = false, false
+end)
+
+test("numbers and times are short and readable", function()
+  check(CB.FormatNumber(912) == "912" and CB.FormatNumber(1410) == "1,410" and CB.FormatNumber(48213) == "48.2k", "numbers")
+  check(CB.FormatClock(2292) == "38:12" and CB.FormatClock(3725) == "1:02:05", "times")
 end)
 
 test("the options choose the lowest quality in the loot summary", function()
@@ -470,32 +591,25 @@ test("dying and running back does not end the dungeon", function()
   Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. BLUE .. ".")
   UnitIsDeadOrGhost = function() return true end
   leaveDungeon()
-  check(#alerts() == 0 and CB.db.lootRun, "still in the run as a ghost")
+  check(not (summary() and summary().shown) and CB.db.lootRun, "still in the run as a ghost")
   UnitIsDeadOrGhost = function() return false end
   enterDungeon("Deadmines")
   Fire("CHAT_MSG_LOOT", "Lisa receives loot: " .. BLUE .. ".")
   leaveDungeon()
   check(#CB.db.lastLoot.items == 2, "both items in one summary")
+  closeSummary()
   UnitIsDeadOrGhost = nil
 end)
 
-test("no summary below the chosen quality or with the option off", function()
-  CB.db.lootMinQuality = 3
+test("no scoreboard for an empty run or with the option off", function()
   enterDungeon("Ragefire Chasm")
-  Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. GREEN .. ".")
-  Fire("CHAT_MSG_LOOT", "Bram receives loot: |cff9d9d9d|Hitem:1::::::::|h[Broken Fang]|h|r.")
   leaveDungeon()
-  check(#alerts() == 0, "nothing worth a summary")
-  CB.db.lootMinQuality = 2
-  Printed = {}
-  SlashCmdList.CHATBANNER("loot")
-  check(Printed[2] and Printed[2]:find("Gnoll Hide", 1, true) and not Printed[2]:find("Broken Fang", 1, true),
-    "green kept for later, grey never")
+  check(not (summary() and summary().shown), "nothing happened, nothing shown")
   CB.db.lootSummary = false
   enterDungeon("Ragefire Chasm")
   Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. BLUE .. ".")
   leaveDungeon()
-  check(#alerts() == 0, "option off")
+  check(not (summary() and summary().shown), "option off")
   IsInInstance, GetInstanceInfo = nil, nil
 end)
 

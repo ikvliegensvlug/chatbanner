@@ -12,7 +12,8 @@ Chat scrolls by fast in combat, while questing or when you look away for a momen
 - **Click to reply**: left-click an alert to answer in the same channel (or whisper back), right-click to dismiss it.
 - **Fits any screen**: set the width, row height (or let it follow the font size), scale, number of alerts and how long they stay. Drag them anywhere and let them grow up or down.
 - **Your style**: font, font size, background opacity, border style, channel label on or off, coloured or white text, optional sound.
-- **Loot summary**: when you leave a dungeon or raid, see who got which items, on screen and in chat. Blue and better by default; choose green or purple and better in the options.
+- **Dungeon scoreboard**: when you leave a dungeon or raid, a window shows who did the most damage (with DPS), healing and buffing, who took the most damage, the highest hit, biggest heal, killing blows, who died most and the biggest hit taken, each with the player's portrait. Below it the loot with who won it, their roll and who else needed. **Post to party** shares it in group chat. Loot from blue and better by default; choose green or purple in the options.
+- **Need rolls**: an alert when someone selects Need on an item, and the winner's roll on the result.
 - **Respects your chat filters**: messages that Blizzard or other add-ons hide from your chat (spam filters, for example) don't become alerts either.
 - Light and self-contained: no libraries, no other add-ons needed.
 
@@ -27,7 +28,7 @@ Chat scrolls by fast in combat, while questing or when you look away for a momen
 | `/chatbanner lock` | Fix the position again |
 | `/chatbanner reset` | Restore all default settings |
 | `/chatbanner news` | Show what changed in recent versions (also shown once after each update) |
-| `/chatbanner loot` | Who got which items in the last dungeon (shown by itself when you leave one) |
+| `/chatbanner summary` | The scoreboard of the last dungeon (opens by itself when you leave one) |
 
 You can also find the options under **Options > AddOns > ChatBanner**.
 

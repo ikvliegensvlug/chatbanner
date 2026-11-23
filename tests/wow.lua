@@ -97,7 +97,35 @@ end
 
 -- game state
 function InCombatLockdown() return false end
-function UnitName() return "Aztek" end
+-- the group: GroupNames["party1"] = "Bram", GroupClasses["Bram"] = "WARRIOR"
+GroupNames, GroupClasses = {}, { Aztek = "DRUID" }
+function UnitName(unit)
+  if unit == nil or unit == "player" then return "Aztek" end
+  return GroupNames[unit]
+end
+function UnitExists(unit) return UnitName(unit) ~= nil end
+function UnitClass(unit)
+  local n = UnitName(unit)
+  local c = n and GroupClasses[n]
+  return c, c
+end
+function UnitGUID(unit) return UnitName(unit) and ("Player-" .. UnitName(unit)) or nil end
+InGroup, InRaid = false, false
+function IsInGroup() return InGroup end
+function IsInRaid() return InRaid end
+Sent = {}
+function SendChatMessage(msg, channel) Sent[#Sent + 1] = channel .. ":" .. msg end
+Portraits = {}
+function SetPortraitTexture(tex, unit) tex.portraitUnit = unit; Portraits[#Portraits + 1] = unit end
+function GetItemIcon() return "Interface/Icons/INV_Sword_04" end
+Now = 100000
+function time() return Now end
+bit = { band = load("return function(a, b) return a & b end")() }
+-- combat log: fill CombatEvent, then Fire("COMBAT_LOG_EVENT_UNFILTERED")
+CombatEvent = {}
+function CombatLogGetCurrentEventInfo() return unpack(CombatEvent, 1, CombatEvent.n or #CombatEvent) end
+CLASS_ICON_TCOORDS = { DRUID = { 0.75, 1, 0, 0.25 }, WARRIOR = { 0, 0.25, 0, 0.25 } }
+RAID_CLASS_COLORS = { DRUID = { r = 1, g = 0.49, b = 0.04 }, WARRIOR = { r = 0.78, g = 0.61, b = 0.43 } }
 function Ambiguate(name) return (name:gsub("%-.*$", "")) end
 C_AddOns = { GetAddOnMetadata = function() return "1.0.0" end }
 ChatTypeInfo = setmetatable({}, { __index = function() return { r = 0.5, g = 0.6, b = 0.7 } end })

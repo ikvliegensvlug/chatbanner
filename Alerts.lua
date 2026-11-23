@@ -46,6 +46,9 @@ CB.EVENTS = EVENTS
 local QUEST = { source = "quest", tag = "Quest", chat = "SYSTEM", noSender = true }
 CB.QUEST = QUEST
 
+-- "Bram: Need on [Ironfoe]", from a loot line
+local NEED = { source = "loot", tag = "Need", chat = "LOOT" }
+
 -- The game's own (translated) texts, with English fallbacks.
 local QUEST_FORMATS = {
   { "ERR_QUEST_ADD_KILL_SII",         "%s slain: %d/%d" },
@@ -81,30 +84,6 @@ local function isQuestProgress(text)
   return false
 end
 CB.IsQuestProgress = isQuestProgress
-
--- Of all loot lines, only the outcome of a roll gets an alert.
-local ROLL_FORMATS = {
-  { "LOOT_ROLL_WON",        "%s won: %s" },
-  { "LOOT_ROLL_YOU_WON",    "You won: %s" },
-  { "LOOT_ROLL_ALL_PASSED", "Everyone passed on: %s" },
-}
-
-local rollPatterns
-local function isRollResult(text)
-  if type(text) ~= "string" then return false end
-  if not rollPatterns then
-    rollPatterns = {}
-    for _, f in ipairs(ROLL_FORMATS) do
-      local fmt = _G[f[1]]
-      rollPatterns[#rollPatterns + 1] = toPattern(type(fmt) == "string" and fmt or f[2])
-    end
-  end
-  for _, p in ipairs(rollPatterns) do
-    if text:find(p) then return true end
-  end
-  return false
-end
-CB.IsRollResult = isRollResult
 
 -- "Roll for [Item]" when a roll window opens; the link shows in the item's quality colour.
 local function rollText(rollID)
@@ -392,7 +371,12 @@ local function onEvent(_, event, ...)
     if text then CB:Show(info, text) end
     return
   end
-  if info.rollsOnly and not isRollResult((...)) then return end
+  local roll
+  if info.rollsOnly then
+    -- of all loot lines only "X selected Need", "X won" and "Everyone passed" alert
+    roll = CB.ParseRoll and CB.ParseRoll((...))
+    if not roll or not (roll.kind == "need" or roll.kind == "won" or roll.kind == "passed") then return end
+  end
   local args = runFilters(event, ...)
   if not args then return end
   local text, sender = args[1], args[2]
@@ -405,6 +389,16 @@ local function onEvent(_, event, ...)
 
   text = clean(text, info, sender)
   if not text then return end
+
+  if roll then
+    if roll.kind == "need" then
+      CB:Show(NEED, "Need on " .. roll.link, roll.who)
+      return
+    elseif roll.kind == "won" then
+      local r = CB.RollOf and CB:RollOf(roll.link, roll.who)
+      if r then text = text .. " (" .. r.kind .. " " .. r.roll .. ")" end
+    end
+  end
 
   local extra
   if event == "CHAT_MSG_CHANNEL" then

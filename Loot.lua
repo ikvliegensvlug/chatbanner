@@ -1,6 +1,7 @@
--- ChatBanner: loot summary. Inside a dungeon or raid it notes who received a
--- green (uncommon) or better item; when you leave, it shows who got what,
--- from the lowest quality chosen in the options (db.lootMinQuality, blue by default) upwards.
+-- ChatBanner: a "run" is one visit to a dungeon or raid. During the run this file
+-- notes who received green (uncommon) or better items and who rolled what;
+-- Stats.lua adds the combat numbers. When you leave, Summary.lua shows it all,
+-- with loot from the quality chosen in the options (db.lootMinQuality) upwards.
 local _, ns = ...
 local CB = ns.CB
 
@@ -12,11 +13,6 @@ CB.LOOT_QUALITIES = {
   { key = 3, label = "Blue (rare) and better",      short = "blue or better" },
   { key = 4, label = "Purple (epic) and better",    short = "purple or better" },
 }
-
-local function qualityLabel(q)
-  for _, o in ipairs(CB.LOOT_QUALITIES) do if o.key == q then return o.short end end
-  return CB.LOOT_QUALITIES[2].short
-end
 
 -- Quality from the colour of an item link, for items the client has not cached yet.
 local QUALITY_COLOURS = {
@@ -80,6 +76,46 @@ local function parseLoot(text)
 end
 CB.ParseLoot = parseLoot
 
+-- Roll lines. Each format names what its arguments are; who = nil means you.
+local ROLL_FORMATS = {
+  { "LOOT_ROLL_NEED_SELF",     "You have selected Need for: %s", "need",     { "link" } },
+  { "LOOT_ROLL_NEED",          "%s has selected Need for: %s",  "need",      { "who", "link" } },
+  { "LOOT_ROLL_ROLLED_NEED",   "Need Roll - %d for %s by %s",   "needroll",  { "roll", "link", "who" } },
+  { "LOOT_ROLL_ROLLED_GREED",  "Greed Roll - %d for %s by %s",  "greedroll", { "roll", "link", "who" } },
+  -- "You won" before "%s won", or "You" would be taken for a name
+  { "LOOT_ROLL_YOU_WON",       "You won: %s",                   "won",       { "link" } },
+  { "LOOT_ROLL_WON",           "%s won: %s",                    "won",       { "who", "link" } },
+  { "LOOT_ROLL_ALL_PASSED",    "Everyone passed on: %s",        "passed",    { "link" } },
+}
+
+local rollPatterns
+-- Returns { kind, who, link, roll } for a roll line, or nil. who is a short name.
+local function parseRoll(text)
+  if type(text) ~= "string" then return nil end
+  if not rollPatterns then
+    rollPatterns = {}
+    for _, f in ipairs(ROLL_FORMATS) do
+      local fmt = _G[f[1]]
+      local pattern, order = toCapture(type(fmt) == "string" and fmt or f[2])
+      rollPatterns[#rollPatterns + 1] = { pattern = pattern, order = order, kind = f[3], roles = f[4] }
+    end
+  end
+  for _, rp in ipairs(rollPatterns) do
+    local caps = { text:match(rp.pattern) }
+    if caps[1] then
+      local args = {}
+      for i, argNum in ipairs(rp.order) do args[argNum] = caps[i] end
+      local r = { kind = rp.kind }
+      for i, role in ipairs(rp.roles) do r[role] = args[i] end
+      r.roll = tonumber(r.roll)
+      local who = r.who or (rp.kind ~= "passed" and UnitName("player")) or nil
+      r.who = who and ((Ambiguate and Ambiguate(who, "short")) or who) or nil
+      return r
+    end
+  end
+end
+CB.ParseRoll = parseRoll
+
 ---------------------------------------------------------------------------
 -- Tracking a run
 ---------------------------------------------------------------------------
@@ -91,56 +127,14 @@ local function inGroupInstance()
   end
 end
 
-local LOOT_INFO = { source = "loot", tag = "Loot", chat = "LOOT" }
-
-function CB:LootSummaryLines(run)
-  -- group the items per player, in the order they first got something
-  local min = self.db.lootMinQuality or 3
-  local players, byName = {}, {}
-  for _, item in ipairs(run.items) do
-    if (item.q or 3) >= min then
-      if not byName[item.who] then
-        byName[item.who] = {}
-        players[#players + 1] = item.who
-      end
-      table.insert(byName[item.who], item.link)
-    end
-  end
-  local lines = {}
-  for _, who in ipairs(players) do
-    lines[#lines + 1] = { who = who, items = table.concat(byName[who], ", ") }
-  end
-  return lines
-end
-
--- Print the summary in chat; with alert = true also show it on screen.
--- Returns false when nothing reaches the chosen quality.
-function CB:ShowLootSummary(run, alert)
-  local which = qualityLabel(self.db.lootMinQuality)
-  local lines = run and self:LootSummaryLines(run) or {}
-  if #lines == 0 then
-    if not alert then self:Print("No " .. which .. " items in the last dungeon.") end
-    return false
-  end
-  self:Print("|cffffd100Loot from " .. run.name .. "|r (" .. which .. ")")
-  for _, l in ipairs(lines) do self:Print("  " .. l.who .. ": " .. l.items) end
-  if alert then
-    -- the newest alert ends up on top, so show the players last to first
-    for i = #lines, 1, -1 do
-      self:Show(LOOT_INFO, lines[i].items, lines[i].who, { duration = 30 })
-    end
-    self:Show(LOOT_INFO, run.name .. " done: who got what", nil, { duration = 30, tag = "Summary" })
-  end
-  return true
-end
-
 function CB:FinishLootRun()
   local run = self.db.lootRun
   if not run then return end
   self.db.lootRun = nil
-  if #run.items > 0 then
+  run.duration = (time and run.start and (time() - run.start)) or 0
+  if #run.items > 0 or (self.HasStats and self:HasStats(run)) then
     self.db.lastLoot = run
-    if self.db.lootSummary then self:ShowLootSummary(run, true) end
+    if self.db.lootSummary and self.OpenSummary then self:OpenSummary(run) end
   end
 end
 
@@ -150,7 +144,7 @@ function CB:CheckLootRun()
   local run = self.db.lootRun
   if name then
     if run and run.name ~= name then self:FinishLootRun(); run = nil end
-    if not run then self.db.lootRun = { name = name, items = {} } end
+    if not run then self.db.lootRun = { name = name, items = {}, rolls = {}, start = time and time() or 0 } end
   elseif run then
     -- a ghost running back from the graveyard has not finished the dungeon yet
     if UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") then return end
@@ -158,9 +152,44 @@ function CB:CheckLootRun()
   end
 end
 
+-- The rolls on one item in the current run.
+local function rollsFor(run, link)
+  run.rolls = run.rolls or {}
+  local r = run.rolls[link]
+  if not r then
+    r = { need = {}, needers = {}, rolls = {} }
+    run.rolls[link] = r
+  end
+  return r
+end
+
+-- What someone rolled on an item in the current run: { kind = "Need", roll = 87 } or nil.
+function CB:RollOf(link, who)
+  local run = self.db.lootRun
+  local r = run and run.rolls and run.rolls[link]
+  return r and who and r.rolls[who] or nil
+end
+
+local function noteRoll(run, roll)
+  local r = rollsFor(run, roll.link)
+  if roll.kind == "need" and roll.who and not r.need[roll.who] then
+    r.need[roll.who] = true
+    r.needers[#r.needers + 1] = roll.who
+  elseif (roll.kind == "needroll" or roll.kind == "greedroll") and roll.who then
+    r.rolls[roll.who] = { kind = roll.kind == "needroll" and "Need" or "Greed", roll = roll.roll }
+  elseif roll.kind == "won" then
+    r.winner = roll.who
+  end
+end
+
 function CB:NoteLoot(text)
   local run = self.db.lootRun
   if not run then return end
+  local roll = parseRoll(text)
+  if roll then
+    if roll.link then noteRoll(run, roll) end
+    return
+  end
   local who, link = parseLoot(text)
   if not link then return end
   local q = quality(link)

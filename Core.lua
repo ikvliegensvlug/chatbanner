@@ -60,8 +60,8 @@ CB.defaults = {
   -- behaviour
   sound = false,
   ignoreOwn = true,
-  lootSummary = true,     -- after a dungeon: who got which items
-  lootMinQuality = 3,     -- lowest quality in that summary: 2 green, 3 blue, 4 purple
+  lootSummary = true,     -- after a dungeon: the scoreboard with stats and loot
+  lootMinQuality = 3,     -- lowest loot quality on it: 2 green, 3 blue, 4 purple
   sources = {
     whisper = true, party = true, raid = true, guild = true, officer = true,
     say = true, yell = true, emote = true, channel = true, npc = true,
@@ -94,6 +94,10 @@ CB.Merge = merge
 
 -- What changed per version, shown once in chat after an update (newest first).
 CB.NEWS = {
+  { version = "1.0.6", notes = {
+    "Dungeon scoreboard: when you leave a dungeon or raid, a window shows who did the most damage, healing and buffing, who took the most damage, the records, the bad luck and the loot, with each player's portrait. Post to party shares it. /chatbanner summary opens it again.",
+    "Need rolls: an alert when someone selects Need on an item, and the winner's roll with the result.",
+  } },
   { version = "1.0.5", notes = {
     "New source: loot rolls. An alert when an item comes up for a roll, and one for who won it. Other loot lines stay in your chat. Switch it off under Loot rolls.",
     "Loot summary: when you leave a dungeon or raid, ChatBanner shows who got blue or better items. Choose green or purple instead in the options; /chatbanner loot shows it again.",
@@ -199,7 +203,7 @@ local HELP = {
   "/chatbanner unlock  - move and resize the alerts (lock to finish)",
   "/chatbanner reset  - restore all default settings",
   "/chatbanner news  - show what changed in recent versions",
-  "/chatbanner loot  - who got which items in the last dungeon",
+  "/chatbanner summary  - the scoreboard of the last dungeon (stats and loot)",
 }
 
 SLASH_CHATBANNER1 = "/chatbanner"
@@ -219,8 +223,8 @@ SlashCmdList.CHATBANNER = function(msg)
   elseif cmd == "reset" then
     CB:ResetSettings()
     CB:Print("All settings restored to default.")
-  elseif cmd == "loot" then
-    CB:ShowLootSummary(CB.db.lastLoot)
+  elseif cmd == "summary" or cmd == "loot" then
+    CB:OpenSummary(CB.db.lastLoot)
   elseif cmd == "news" then
     if not CB:ShowNews() then CB:Print("No release notes for this version.") end
   else
