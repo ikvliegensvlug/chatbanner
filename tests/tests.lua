@@ -490,7 +490,7 @@ test("the damage meter's fights since entering are added up per player", functio
   fight(2, 40, { dmg = { { "Aztek-Realm", 1000, "DRUID" }, { "Bram", 400, "WARRIOR" }, { "Kobold", 5000, nil, 2 } },
                  heal = { { "Aztek", 800, "DRUID" } },
                  taken = { { "Bram", 2090, "WARRIOR" } } })
-  fight(3, 20, { dmg = { { "Aztek", 312, "DRUID" } }, deaths = { { "Bram", 1, "WARRIOR" } } })
+  fight(3, 20, { dmg = { { "Aztek", 312, "DRUID" } }, deaths = { { "Bram", 0, "WARRIOR" } } })   -- the meter gives 0 for a death
   local run = CB.db.lootRun
   leaveDungeon()
   closeSummary()
@@ -525,6 +525,29 @@ test("nothing is counted outside a dungeon", function()
   IsInInstance = function() return false, "none" end
   Fire("PLAYER_ENTERING_WORLD")
   check(CB.db.lootRun == nil, "no run")
+end)
+
+test("alone, items taken from the loot window count once", function()
+  enterDungeon("Deadmines")
+  local slots = { BLUE, "|cff9d9d9d|Hitem:1::::::::|h[Broken Fang]|h|r" }
+  GetNumLootItems = function() return #slots end
+  GetLootSlotLink = function(i) return slots[i] end
+  Fire("LOOT_OPENED")
+  Fire("LOOT_SLOT_CLEARED", 1)
+  Fire("LOOT_SLOT_CLEARED", 2)
+  Fire("CHAT_MSG_LOOT", "You receive loot: " .. BLUE .. ".")   -- the same item again in chat
+  local items = CB.db.lootRun.items
+  check(#items == 1 and items[1].who == "Aztek" and items[1].link == BLUE, "one blue item, got " .. #items)
+  Fire("CHAT_MSG_LOOT", "You receive loot: " .. BLUE .. ".")   -- a second one is a new item
+  check(#items == 2, "a second drop counts")
+  InGroup = true
+  Fire("LOOT_OPENED")
+  Fire("LOOT_SLOT_CLEARED", 1)
+  check(#items == 2, "in a group the chat line decides")
+  InGroup = false
+  GetNumLootItems, GetLootSlotLink = nil, nil
+  leaveDungeon()
+  closeSummary()
 end)
 
 test("leaving a dungeon opens the scoreboard with portraits", function()

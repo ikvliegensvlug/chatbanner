@@ -73,7 +73,10 @@ local function addSource(stats, field, src, duration)
   if src.sourceDisplayType == ENEMY then return end
   if not (readable(src.name) and readable(src.totalAmount)) then return end
   local amount = src.totalAmount
-  if type(amount) ~= "number" or amount <= 0 then return end
+  if type(amount) ~= "number" then return end
+  -- the deaths list names who died in that fight; its amount is 0 on this client
+  if field == "deaths" and amount <= 0 then amount = 1 end
+  if amount <= 0 then return end
   local name = short(src.name)
   local p = stats.players[name]
   if not p then

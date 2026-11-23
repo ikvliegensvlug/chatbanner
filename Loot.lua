@@ -193,6 +193,43 @@ local function noteRoll(run, roll)
   end
 end
 
+-- The same item can reach us twice: from the loot window and from the chat line.
+local recent = {}
+local function seenRecently(key, source)
+  local now = GetTime and GetTime() or 0
+  local r = recent[key]
+  if r and r.source ~= source and now - r.time < 5 then recent[key] = nil; return true end
+  recent[key] = { time = now, source = source }
+  return false
+end
+
+local function addItem(run, who, link, source)
+  local q = quality(link)
+  if q < KEEP_QUALITY then return end
+  who = (Ambiguate and Ambiguate(who, "short")) or who
+  if seenRecently(who .. link, source) then return end
+  table.insert(run.items, { who = who, link = link, q = q })
+end
+
+-- Alone, what you take from the loot window is yours; this works even when the
+-- chat line is hidden from add-ons. In a group the chat line says who got it.
+local lootSlots = {}
+local function noteLootWindow()
+  wipe(lootSlots)
+  if not (GetNumLootItems and GetLootSlotLink) then return end
+  for slot = 1, GetNumLootItems() do
+    local ok, link = pcall(GetLootSlotLink, slot)
+    if ok and type(link) == "string" and not (CB.IsSecret and CB.IsSecret(link)) then lootSlots[slot] = link end
+  end
+end
+local function noteSlotTaken(slot)
+  local run = CB.db.lootRun
+  local link = lootSlots[slot]
+  lootSlots[slot] = nil
+  if not (run and link) or (IsInGroup and IsInGroup()) then return end
+  addItem(run, UnitName("player") or "You", link, "window")
+end
+
 function CB:NoteLoot(text)
   local run = self.db.lootRun
   if not run then return end
@@ -204,11 +241,7 @@ function CB:NoteLoot(text)
   end
   local who, link = parseLoot(text)
   if not link then return end
-  local q = quality(link)
-  if q < KEEP_QUALITY then return end
-  if not who then who = UnitName("player") or "You" end
-  who = (Ambiguate and Ambiguate(who, "short")) or who
-  table.insert(run.items, { who = who, link = link, q = q })
+  addItem(run, who or UnitName("player") or "You", link, "chat")
 end
 
 -- /chatbanner debug: keep the last loot lines and what ChatBanner made of them,
@@ -231,7 +264,8 @@ end
 
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_ALIVE",
-                     "PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED", "CHAT_MSG_LOOT" }) do
+                     "PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED", "CHAT_MSG_LOOT",
+                     "LOOT_OPENED", "LOOT_SLOT_CLEARED" }) do
   pcall(ev.RegisterEvent, ev, e)
 end
 local onEvent
@@ -241,7 +275,11 @@ ev:SetScript("OnEvent", function(...)
 end)
 onEvent = function(_, event, text)
   if not CB.db then return end
-  if event == "CHAT_MSG_LOOT" then
+  if event == "LOOT_OPENED" then
+    noteLootWindow()
+  elseif event == "LOOT_SLOT_CLEARED" then
+    noteSlotTaken(text)
+  elseif event == "CHAT_MSG_LOOT" then
     if CB.db.debug then CB:DebugLoot(text) end
     CB:NoteLoot(text)
   elseif event == "PLAYER_REGEN_ENABLED" then
