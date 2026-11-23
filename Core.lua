@@ -205,6 +205,7 @@ local HELP = {
   "/chatbanner reset  - restore all default settings",
   "/chatbanner news  - show what changed in recent versions",
   "/chatbanner summary  - the scoreboard of this dungeon so far, or of the last one",
+  "/chatbanner summary last  - the scoreboard of the last finished dungeon",
   "/chatbanner summary test  - a sample scoreboard with your group",
 }
 
@@ -227,6 +228,8 @@ SlashCmdList.CHATBANNER = function(msg)
     CB:Print("All settings restored to default.")
   elseif (cmd == "summary" or cmd == "loot") and arg == "test" then
     CB:OpenSummary(CB:SampleRun())
+  elseif (cmd == "summary" or cmd == "loot") and arg == "last" then
+    CB:OpenSummary(CB.db.lastLoot)
   elseif cmd == "summary" or cmd == "loot" then
     CB:OpenSummary(CB:RunSoFar() or CB.db.lastLoot)
   elseif cmd == "debug" then
