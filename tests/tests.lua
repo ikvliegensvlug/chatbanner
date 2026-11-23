@@ -591,6 +591,11 @@ test("/chatbanner summary test shows a sample with your name", function()
   end
   check(#names == #CB.SUMMARY_CATEGORIES, "every category, got " .. #names)
   check(table.concat(names, ","):find("Aztek", 1, true), "you are in it")
+  local icons = {}
+  for _, c in ipairs(AllFrames) do
+    if c.parent == f and rawget(c, "classIcon") and c.shown and c.classIcon.shown then icons[c.classIcon.texture] = true end
+  end
+  check(icons["Interface\\Icons\\ClassIcon_Warrior"],"players outside your group get their round class icon")
   closeSummary()
 end)
 

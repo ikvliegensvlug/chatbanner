@@ -170,23 +170,24 @@ local function round(tex)
   if tex.SetMask then tex:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask") end
 end
 
--- The player's face while they are in the group; otherwise their class icon.
-local function setPortrait(tex, name, class)
+-- The player's face while they are in the group; otherwise their round class icon.
+-- No tex coords anywhere: the game refuses them on a texture with a mask.
+local function setPortrait(c, name, class)
   local unit = unitFor(name)
-  tex:SetTexCoord(0, 1, 0, 1)
   if unit and SetPortraitTexture then
-    SetPortraitTexture(tex, unit)
-    tex.unit = unit
+    SetPortraitTexture(c.portrait, unit)   -- already round
+    c.portrait:Show()
+    c.classIcon:Hide()
     return
   end
-  tex.unit = nil
-  local coords = class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
-  if coords then
-    tex:SetTexture("Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES")
-    tex:SetTexCoord(unpack(coords))
+  c.portrait:Hide()
+  if class and class ~= "" then
+    -- "DRUID" -> Interface\Icons\ClassIcon_Druid
+    c.classIcon:SetTexture("Interface\\Icons\\ClassIcon_" .. class:sub(1, 1) .. class:sub(2):lower())
   else
-    tex:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+    c.classIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
   end
+  c.classIcon:Show()
 end
 
 local function classColor(class)
@@ -212,7 +213,10 @@ local function makeCard()
   c.portrait = c:CreateTexture(nil, "ARTWORK")
   c.portrait:SetSize(48, 48)
   c.portrait:SetPoint("CENTER", c.ring, "CENTER")
-  round(c.portrait)
+  c.classIcon = c:CreateTexture(nil, "ARTWORK")
+  c.classIcon:SetSize(48, 48)
+  c.classIcon:SetPoint("CENTER", c.ring, "CENTER")
+  round(c.classIcon)
   -- category icon where a unit frame shows the level
   c.badgeRing = c:CreateTexture(nil, "OVERLAY", nil, 1)
   c.badgeRing:SetSize(26, 26)
@@ -241,7 +245,7 @@ end
 local function fillCard(c, card)
   local cat = card.cat
   c.badge:SetTexture("Interface\\Icons\\" .. cat.icon)
-  setPortrait(c.portrait, card.who, card.class)
+  setPortrait(c, card.who, card.class)
   c.title:SetText(cat.title)
   c.name:SetText(card.who)
   c.name:SetTextColor(classColor(card.class))
