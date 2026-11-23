@@ -574,6 +574,7 @@ test("leaving a dungeon opens the scoreboard with portraits", function()
   check(text:find("Most damage: Aztek 48.2k (804 DPS)", 1, true), "categories posted, got " .. text)
   check(text:find("[Archeus]", 1, true), "loot posted")
   for _, line in ipairs(Sent) do check(#line - 6 <= 255, "lines fit in chat") end
+  check(Sent[#Sent] == "PARTY:Download addon ChatBanner, free on CurseForge.", "ends with where to get ChatBanner")
   InRaid = true
   Sent = {}
   CB:PostSummary(run)

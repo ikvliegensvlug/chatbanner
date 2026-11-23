@@ -139,6 +139,7 @@ function CB:SummaryChatLines(run)
     end
   end
   if line ~= "" then lines[#lines + 1] = line end
+  lines[#lines + 1] = "Download addon ChatBanner, free on CurseForge."
   return lines
 end
 
