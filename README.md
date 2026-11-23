@@ -1,5 +1,7 @@
 # ChatBanner
 
+**Made for World of Warcraft: Forever** (client 1.60, interface 16001).
+
 Big, clickable on-screen alerts for chat messages, so you never miss a whisper, guild or party message again.
 
 Chat scrolls by fast in combat, while questing or when you look away for a moment. ChatBanner shows each new message as a large alert at the top of your screen, coloured like its chat type, and fades it out after a few seconds.
