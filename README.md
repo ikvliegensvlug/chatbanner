@@ -12,10 +12,11 @@ Chat scrolls by fast in combat, while questing or when you look away for a momen
 - **Click to reply**: left-click an alert to answer in the same channel (or whisper back), right-click to dismiss it.
 - **Fits any screen**: set the width, row height (or let it follow the font size), scale, number of alerts and how long they stay. Drag them anywhere and let them grow up or down.
 - **Your style**: font, font size, background opacity, border style, channel label on or off, coloured or white text, optional sound.
-- **Dungeon scoreboard**: when you leave a dungeon or raid, a window shows who did the most damage (with DPS) and healing, who took the most damage and who died most, each with the player's portrait, taken from the game's own damage meter. Below it the loot with who won it, their roll and who else needed. **Post to party** shares it in group chat. Loot from blue and better by default; choose green or purple in the options.
-- **Need rolls**: an alert when someone selects Need on an item, and the winner's roll on the result.
+- **Need rolls**: an alert when someone selects Need on an item, and the result alert shows the winning roll, such as "You won: [Ironfoe] (Need 87)".
 - **Respects your chat filters**: messages that Blizzard or other add-ons hide from your chat (spam filters, for example) don't become alerts either.
 - Light and self-contained: no libraries, no other add-ons needed.
+
+Looking for the loot summary after a dungeon? It is its own add-on now: **Dungeon Stats**, with a scoreboard of damage, healing, damage taken, deaths and loot.
 
 ## Commands
 
@@ -28,8 +29,6 @@ Chat scrolls by fast in combat, while questing or when you look away for a momen
 | `/chatbanner lock` | Fix the position again |
 | `/chatbanner reset` | Restore all default settings |
 | `/chatbanner news` | Show what changed in recent versions (also shown once after each update) |
-| `/chatbanner summary` | The scoreboard of the last dungeon (opens by itself when you leave one) |
-| `/chatbanner summary test` | A sample scoreboard with you and your group |
 
 You can also find the options under **Options > AddOns > ChatBanner**.
 

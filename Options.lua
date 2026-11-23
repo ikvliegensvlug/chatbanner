@@ -253,11 +253,7 @@ local function build()
   y = y - 34
   checkbox("Play a sound with each alert", COL1, y, setting("sound"))
   checkbox("Skip my own messages", COL2, y, setting("ignoreOwn"))
-  y = y - 30
-  checkbox("Dungeon summary after leaving (stats and loot)", COL1, y, setting("lootSummary"))
-  y = y - 36
-  dropdown("Loot in the dungeon summary", COL1, y, CB.LOOT_QUALITIES, setting("lootMinQuality"))
-  y = y - 64
+  y = y - 44
   button("Reset all settings", COL1, y, 160, function()
     CB:ResetSettings()
     CB:Print("All settings restored to default.")

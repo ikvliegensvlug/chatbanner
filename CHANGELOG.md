@@ -2,8 +2,8 @@
 
 ## 1.0.6
 
-- Fixed: the message "ChatBanner has been blocked from an action only available to the Blizzard UI" right after logging in or /reload. A first version of the scoreboard read the combat log, which this client no longer allows add-ons to do. The options also stopped using Blizzard's shared dropdown menus.
-- **Dungeon scoreboard** instead of the loot alerts: when you leave a dungeon or raid, a window in Blizzard's own dialog style shows the stars of the run with their portraits: most damage (with DPS), most healing, most damage taken and who died most. The numbers come from the game's own damage meter. The loot follows, with who won each item, their roll and who else needed. **Post to party** (or raid) shares it in chat, ending with "Download addon ChatBanner, free on CurseForge." `/chatbanner summary` opens it again, `/chatbanner summary test` shows a sample.
+- Fixed: the message "ChatBanner has been blocked from an action only available to the Blizzard UI" right after logging in or /reload. The options also stopped using Blizzard's shared dropdown menus.
+- The loot summary after a dungeon or raid moves to its own add-on, **Dungeon Stats** (free on CurseForge), which adds a scoreboard of damage, healing, damage taken and deaths with portraits. ChatBanner sticks to chat alerts. Dungeon Stats takes over your saved runs.
 - **Need rolls**: an alert when someone selects Need on an item ("Bram: Need on [Ironfoe]"), and the winner's roll on the result alert ("Aztek won: [Ironfoe] (Need 87)").
 
 ## 1.0.5

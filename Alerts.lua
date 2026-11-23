@@ -402,6 +402,7 @@ local function onEvent(_, event, ...)
   if info.rollsOnly then
     -- of all loot lines only "X selected Need", "X won" and "Everyone passed" alert
     roll = CB.ParseRoll and CB.ParseRoll((...))
+    if roll and CB.NoteRoll then CB:NoteRoll(roll) end   -- remembered for "X won (Need 87)"
     if not roll or not (roll.kind == "need" or roll.kind == "won" or roll.kind == "passed") then return end
   end
   local args = runFilters(event, ...)

@@ -60,8 +60,6 @@ CB.defaults = {
   -- behaviour
   sound = false,
   ignoreOwn = true,
-  lootSummary = true,     -- after a dungeon: the scoreboard with stats and loot
-  lootMinQuality = 3,     -- lowest loot quality on it: 2 green, 3 blue, 4 purple
   sources = {
     whisper = true, party = true, raid = true, guild = true, officer = true,
     say = true, yell = true, emote = true, channel = true, npc = true,
@@ -96,7 +94,7 @@ CB.Merge = merge
 CB.NEWS = {
   { version = "1.0.6", notes = {
     "Fixed: 'ChatBanner has been blocked from an action only available to the Blizzard UI'.",
-    "Dungeon scoreboard: when you leave a dungeon or raid, a window shows who did the most damage and healing, who took the most damage and who died most, with each player's portrait, plus the loot. Post to party shares it. /chatbanner summary opens it again.",
+    "The loot summary after a dungeon moves to its own add-on: Dungeon Stats (free on CurseForge), now with a scoreboard of damage, healing, damage taken and deaths. Your saved runs move along.",
     "Need rolls: an alert when someone selects Need on an item, and the winner's roll with the result.",
   } },
   { version = "1.0.5", notes = {
@@ -204,9 +202,6 @@ local HELP = {
   "/chatbanner unlock  - move and resize the alerts (lock to finish)",
   "/chatbanner reset  - restore all default settings",
   "/chatbanner news  - show what changed in recent versions",
-  "/chatbanner summary  - the scoreboard of this dungeon so far, or of the last one",
-  "/chatbanner summary last  - the last finished dungeon (Older and Newer browse the last 5)",
-  "/chatbanner summary test  - a sample scoreboard with your group",
 }
 
 SLASH_CHATBANNER1 = "/chatbanner"
@@ -226,19 +221,15 @@ SlashCmdList.CHATBANNER = function(msg)
   elseif cmd == "reset" then
     CB:ResetSettings()
     CB:Print("All settings restored to default.")
-  elseif (cmd == "summary" or cmd == "loot") and arg == "test" then
-    CB:OpenSummary(CB:SampleRun())
-  elseif (cmd == "summary" or cmd == "loot") and arg == "last" then
-    CB:OpenSummary(CB:LastRun())
   elseif cmd == "summary" or cmd == "loot" then
-    CB:OpenSummary(CB:RunSoFar() or CB:LastRun())
+    CB:Print("The dungeon summary is its own add-on now: Dungeon Stats, free on CurseForge (/dstats).")
   elseif cmd == "debug" then
     if CB.db.debug then
       CB.db.debug = nil
       CB:Print("Debug log off and cleared.")
     else
-      CB.db.debug = { loot = {}, meter = {} }
-      CB:Print("Debug log on: loot lines and damage meter numbers are kept until /chatbanner debug again.")
+      CB.db.debug = {}
+      CB:Print("Debug log on: errors are kept until /chatbanner debug again.")
     end
   elseif cmd == "news" then
     if not CB:ShowNews() then CB:Print("No release notes for this version.") end
