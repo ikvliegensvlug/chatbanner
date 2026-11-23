@@ -30,6 +30,13 @@ local ROLL_FORMATS = {
   { "LOOT_ROLL_ALL_PASSED",    "Everyone passed on: %s",        "passed",    { "link" } },
 }
 
+-- This client starts roll lines with a link to the loot history: "|HlootHistory:9772545|h[Loot]|h: ".
+-- Without it the lines read as on other clients (and its number is not the roll).
+local function stripHistory(s)
+  return (s:gsub("^|HlootHistory:[^|]*|h%[.-%]|h:%s*", ""))
+end
+CB.StripLootHistory = stripHistory
+
 local rollPatterns
 -- Returns { kind, who, link, roll } for a roll line, or nil. who is a short name.
 local function parseRoll(text)
@@ -38,10 +45,11 @@ local function parseRoll(text)
     rollPatterns = {}
     for _, f in ipairs(ROLL_FORMATS) do
       local fmt = _G[f[1]]
-      local pattern, order = toCapture(type(fmt) == "string" and fmt or f[2])
+      local pattern, order = toCapture(stripHistory(type(fmt) == "string" and fmt or f[2]))
       rollPatterns[#rollPatterns + 1] = { pattern = pattern, order = order, kind = f[3], roles = f[4] }
     end
   end
+  text = stripHistory(text)
   for _, rp in ipairs(rollPatterns) do
     local caps = { text:match(rp.pattern) }
     if caps[1] then

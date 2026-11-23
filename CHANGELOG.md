@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Loot rolls on WoW Forever: the "won" alert works again and shows the real roll. The game puts a [Loot] link in front of these lines, which ChatBanner did not expect.
+
 ## 1.0.6
 
 - Fixed: the message "ChatBanner has been blocked from an action only available to the Blizzard UI" right after logging in or /reload. The options also stopped using Blizzard's shared dropdown menus.

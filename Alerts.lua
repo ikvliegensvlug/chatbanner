@@ -408,6 +408,8 @@ local function onEvent(_, event, ...)
   local args = runFilters(event, ...)
   if not args then return end
   local text, sender = args[1], args[2]
+  -- the [Loot] link in front of roll lines on this client: the alert shows the line itself
+  if roll and type(text) == "string" and CB.StripLootHistory then text = CB.StripLootHistory(text) end
 
   -- your own messages (whispering yourself still alerts, handy for testing)
   if CB.db.ignoreOwn and info.reply and info.reply ~= "tell" and info.reply ~= "bnet" then

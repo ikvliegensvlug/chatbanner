@@ -423,6 +423,19 @@ test("the winner's roll shows on the result alert", function()
   check(won and msgOf(won):find("(Need 87)", 1, true), "roll on the result alert, got " .. tostring(won and msgOf(won)))
 end)
 
+test("roll lines with this client's [Loot] link in front alert as usual", function()
+  local H = "|HlootHistory:9772545|h[Loot]|h: "
+  local r = CB.ParseRoll(H .. "Greed Roll - 25 for " .. PURPLE .. " by Boneified Aggromagnet")
+  check(r and r.kind == "greedroll" and r.roll == 25 and r.who == "Boneified Aggromagnet", "the roll, not the history number")
+  Fire("CHAT_MSG_LOOT", H .. "Need Roll - 61 for " .. PURPLE .. " by Aero Dynamic")
+  Fire("CHAT_MSG_LOOT", H .. "Aero Dynamic won: " .. PURPLE)
+  local won
+  for _, a in ipairs(alerts()) do if msgOf(a):find("Aero Dynamic won", 1, true) then won = a end end
+  check(won, "an alert for who won")
+  check(msgOf(won):find("(Need 61)", 1, true), "with the roll, got " .. msgOf(won))
+  check(not msgOf(won):find("Loot]", 1, true), "without the [Loot] link, got " .. msgOf(won))
+end)
+
 test("/chatbanner summary points to Dungeon Stats", function()
   SlashCmdList.CHATBANNER("summary")
   check(table.concat(Printed, " "):find("Dungeon Stats", 1, true), "pointer printed")
