@@ -527,6 +527,17 @@ test("nothing is counted outside a dungeon", function()
   check(CB.db.lootRun == nil, "no run")
 end)
 
+test("links coloured by quality (|cnIQ2:) are read", function()
+  enterDungeon("Wailing Caverns")
+  local bracer = "|cnIQ2:|Hitem:14366::::::::27:1484::1::1:28:5254:::::|h[Mystic's Bracelets]|h|r"
+  Fire("CHAT_MSG_LOOT", "You receive loot: " .. bracer .. ".")
+  Fire("CHAT_MSG_LOOT", "You receive loot: |cnIQ0:|Hitem:5124::::::::27:1484:::::::::|h[Small Raptor Tooth]|h|r.")
+  local items = CB.db.lootRun.items
+  check(#items == 1 and items[1].link == bracer and items[1].q == 2, "the green bracer, not the grey tooth, got " .. #items)
+  leaveDungeon()
+  closeSummary()
+end)
+
 test("alone, items taken from the loot window count once", function()
   enterDungeon("Deadmines")
   local slots = { BLUE, "|cff9d9d9d|Hitem:1::::::::|h[Broken Fang]|h|r" }

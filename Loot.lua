@@ -20,6 +20,9 @@ local QUALITY_COLOURS = {
 }
 
 local function quality(link)
+  -- this client colours links by quality: |cnIQ2:...|r (2 = uncommon)
+  local iq = link:match("|cnIQ(%d+):")
+  if iq then return tonumber(iq) end
   if GetItemInfo then
     local _, _, q = GetItemInfo(link)
     if q then return q end

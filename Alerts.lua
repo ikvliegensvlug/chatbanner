@@ -362,7 +362,7 @@ local function clean(text, info, sender)
     text = text:gsub("%%s", shortName(sender) or sender)
   end
   text = text:gsub("[\r\n]+", " "):gsub("^%s+", ""):gsub("%s+$", "")
-  local plain = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", "")
+  local plain = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|cn[^:|]*:", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", "")
   if not plain:find("%S") then return nil end
   return text
 end
