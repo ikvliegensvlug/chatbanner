@@ -386,6 +386,37 @@ end
 
 local MAX_LOOT = 8
 
+-- A made-up run with you and your group, to see the scoreboard without a dungeon.
+function CB:SampleRun()
+  local names = {}
+  for _, unit in ipairs(self.GroupUnits()) do
+    local n = UnitName(unit)
+    if n then names[#names + 1] = { name = n, class = select(2, UnitClass(unit)) } end
+  end
+  local extra = { { "Bram", "WARRIOR" }, { "Lisa", "PRIEST" }, { "Joost", "MAGE" }, { "Kees", "HUNTER" } }
+  for i = #names + 1, 5 do names[i] = { name = extra[i - 1][1], class = extra[i - 1][2] } end
+  local a, b, c, d = names[1], names[2], names[3], names[4]
+  local players = {}
+  local function p(who, t) t.class = who.class; t.active = t.active or 600; players[who.name] = t; return t end
+  p(a, { dmg = 48213, heal = 0, buffs = 6, taken = 9100, kb = 22, deaths = 0, active = 1180 })
+  p(b, { dmg = 21000, heal = 0, buffs = 2, taken = 52004, kb = 9, deaths = 1 })
+  p(c, { dmg = 3100, heal = 31540, buffs = 27, taken = 7200, kb = 1, deaths = 0 })
+  p(d, { dmg = 30500, heal = 0, buffs = 0, taken = 11800, kb = 14, deaths = 3 })
+  local link = "|cffa335ee|Hitem:2100::::::::|h[Ironfoe]|h|r"
+  local cloak = "|cff0070dd|Hitem:6449::::::::|h[Glowing Lizardscale Cloak]|h|r"
+  return {
+    name = "Wailing Caverns (sample)", duration = 38 * 60 + 12,
+    stats = { players = players, kills = 64, rec = {
+      hit = { who = a.name, amount = 912, what = "Ferocious Bite" },
+      heal = { who = c.name, amount = 1410, what = "Greater Heal" },
+      taken = { who = b.name, amount = 1840, what = "Mutanus the Devourer" } } },
+    items = { { who = a.name, link = link, q = 4 }, { who = d.name, link = cloak, q = 3 } },
+    rolls = { [link] = { needers = { a.name, b.name }, need = {}, winner = a.name,
+      rolls = { [a.name] = { kind = "Need", roll = 87 }, [b.name] = { kind = "Need", roll = 54 } } },
+      [cloak] = { needers = { d.name }, need = {}, winner = d.name, rolls = { [d.name] = { kind = "Need", roll = 71 } } } },
+  }
+end
+
 function CB:OpenSummary(run)
   if not run then
     self:Print("No dungeon summary yet. It appears when you leave a dungeon or raid.")

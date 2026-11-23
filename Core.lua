@@ -204,12 +204,13 @@ local HELP = {
   "/chatbanner reset  - restore all default settings",
   "/chatbanner news  - show what changed in recent versions",
   "/chatbanner summary  - the scoreboard of the last dungeon (stats and loot)",
+  "/chatbanner summary test  - a sample scoreboard with your group",
 }
 
 SLASH_CHATBANNER1 = "/chatbanner"
 SLASH_CHATBANNER2 = "/cbanner"
 SlashCmdList.CHATBANNER = function(msg)
-  local cmd = (msg or ""):lower():match("^%s*(%S*)")
+  local cmd, arg = (msg or ""):lower():match("^%s*(%S*)%s*(%S*)")
   if cmd == "" or cmd == "options" or cmd == "config" then
     CB:OpenOptions()
   elseif cmd == "setup" then
@@ -223,6 +224,8 @@ SlashCmdList.CHATBANNER = function(msg)
   elseif cmd == "reset" then
     CB:ResetSettings()
     CB:Print("All settings restored to default.")
+  elseif (cmd == "summary" or cmd == "loot") and arg == "test" then
+    CB:OpenSummary(CB:SampleRun())
   elseif cmd == "summary" or cmd == "loot" then
     CB:OpenSummary(CB.db.lastLoot)
   elseif cmd == "news" then

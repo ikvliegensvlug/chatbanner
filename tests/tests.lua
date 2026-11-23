@@ -564,6 +564,19 @@ test("leaving a dungeon opens the scoreboard with portraits", function()
   InGroup, InRaid = false, false
 end)
 
+test("/chatbanner summary test shows a sample with your name", function()
+  SlashCmdList.CHATBANNER("summary test")
+  local f = summary()
+  check(f.shown and f.title.text:find("sample", 1, true), "sample shown")
+  local names = {}
+  for _, c in ipairs(AllFrames) do
+    if c.parent == f and rawget(c, "badge") and c.shown then names[#names + 1] = c.name.text end
+  end
+  check(#names == 9, "all nine categories, got " .. #names)
+  check(table.concat(names, ","):find("Aztek", 1, true), "you are in it")
+  closeSummary()
+end)
+
 test("numbers and times are short and readable", function()
   check(CB.FormatNumber(912) == "912" and CB.FormatNumber(1410) == "1,410" and CB.FormatNumber(48213) == "48.2k", "numbers")
   check(CB.FormatClock(2292) == "38:12" and CB.FormatClock(3725) == "1:02:05", "times")

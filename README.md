@@ -29,6 +29,7 @@ Chat scrolls by fast in combat, while questing or when you look away for a momen
 | `/chatbanner reset` | Restore all default settings |
 | `/chatbanner news` | Show what changed in recent versions (also shown once after each update) |
 | `/chatbanner summary` | The scoreboard of the last dungeon (opens by itself when you leave one) |
+| `/chatbanner summary test` | A sample scoreboard with you and your group |
 
 You can also find the options under **Options > AddOns > ChatBanner**.
 
