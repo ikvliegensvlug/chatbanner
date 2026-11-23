@@ -131,6 +131,9 @@ Portraits = {}
 function SetPortraitTexture(tex, unit) tex.portraitUnit = unit; Portraits[#Portraits + 1] = unit end
 C_Texture = { GetAtlasInfo = function(a) if a:find("^classicon%-") then return { width = 64 } end end }
 function GetItemIcon() return "Interface/Icons/INV_Sword_04" end
+Timers = {}
+C_Timer = { After = function(_, fn) Timers[#Timers + 1] = fn end }
+function RunTimers() local list = Timers; Timers = {}; for _, fn in ipairs(list) do fn() end end
 Now = 100000
 function time() return Now end
 bit = { band = load("return function(a, b) return a & b end")() }

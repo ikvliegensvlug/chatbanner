@@ -264,6 +264,7 @@ local function makeCard()
 end
 
 local function fillCard(c, card)
+  c.card = card
   local cat = card.cat
   c.badge:SetTexture("Interface\\Icons\\" .. cat.icon)
   setPortrait(c, card.who, card.class, card.isMe, card.guid)
@@ -512,5 +513,21 @@ function CB:OpenSummary(run)
   if inGroup then frame.post:Enable() else frame.post:Disable() end
   frame:SetHeight(-y + 56)
   frame:Show()
+  -- right after a loading screen the game may not have the 3D portraits ready yet:
+  -- draw them again a little later
+  if C_Timer and C_Timer.After then
+    for _, delay in ipairs({ 0.5, 2, 5 }) do
+      C_Timer.After(delay, function() CB:RefreshPortraits() end)
+    end
+  end
   return true
+end
+
+function CB:RefreshPortraits()
+  if not (frame and frame:IsShown()) then return end
+  for _, c in ipairs(cards) do
+    if c:IsShown() and c.card then
+      setPortrait(c, c.card.who, c.card.class, c.card.isMe, c.card.guid)
+    end
+  end
 end

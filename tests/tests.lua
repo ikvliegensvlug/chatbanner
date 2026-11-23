@@ -664,6 +664,17 @@ test("an error while handling chat never reaches the player", function()
   CB.lastError = nil
 end)
 
+test("portraits are drawn again shortly after the scoreboard opens", function()
+  SlashCmdList.CHATBANNER("summary test")
+  Portraits = {}
+  RunTimers()
+  check(#Portraits >= 3 and Portraits[1] == "player", "your portrait redrawn by the timers, got " .. #Portraits)
+  closeSummary()
+  Portraits = {}
+  RunTimers()
+  check(#Portraits == 0, "nothing redrawn once closed")
+end)
+
 test("numbers and times are short and readable", function()
   check(CB.FormatNumber(912) == "912" and CB.FormatNumber(1410) == "1,410" and CB.FormatNumber(48213) == "48.2k", "numbers")
   check(CB.FormatClock(2292) == "38:12" and CB.FormatClock(3725) == "1:02:05", "times")
