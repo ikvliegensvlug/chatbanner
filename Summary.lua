@@ -92,7 +92,9 @@ function CB:SummaryLoot(run)
       local r = run.rolls and run.rolls[item.link]
       local parts = {}
       local won = r and r.rolls[item.who]
-      parts[1] = "won by " .. item.who .. (won and (" (" .. won.kind .. " " .. won.roll .. ")") or "")
+      -- "won" only when there was a roll; alone you simply looted it
+      parts[1] = (r and r.winner and "won by " or "looted by ") .. item.who
+        .. (won and (" (" .. won.kind .. " " .. won.roll .. ")") or "")
       if r then
         local others = {}
         for _, name in ipairs(r.needers) do
@@ -103,10 +105,32 @@ function CB:SummaryLoot(run)
         end
         if #others > 0 then parts[2] = "also Need: " .. table.concat(others, ", ") end
       end
-      rows[#rows + 1] = { link = item.link, who = item.who, text = table.concat(parts, " - ") }
+      rows[#rows + 1] = { link = item.link, who = item.who, q = item.q or 3, order = #rows, text = table.concat(parts, " - ") }
     end
   end
+  -- the best items first, in the order they dropped
+  table.sort(rows, function(a, b)
+    if a.q ~= b.q then return a.q > b.q end
+    return a.order < b.order
+  end)
   return rows
+end
+
+-- Items in the run that could be shown with some quality filter (green and up).
+function CB:SummaryHasLoot(run)
+  for _, item in ipairs(run.items or {}) do
+    if (item.q or 3) >= 2 then return true end
+  end
+  return false
+end
+
+-- The next quality filter after the current one (green -> blue -> purple -> green).
+function CB:NextLootQuality()
+  local list, cur = self.LOOT_QUALITIES, self.db.lootMinQuality or 3
+  for i, choice in ipairs(list) do
+    if choice.key == cur then return list[i % #list + 1].key end
+  end
+  return list[1].key
 end
 
 ---------------------------------------------------------------------------
@@ -404,6 +428,40 @@ end
 
 local MAX_LOOT = 8
 
+local QUALITY_HEX = { [2] = "1eff00", [3] = "0070dd", [4] = "a335ee" }
+local function qualityLabel(q)
+  for _, choice in ipairs(CB.LOOT_QUALITIES) do
+    if choice.key == q then return "|cff" .. (QUALITY_HEX[q] or "ffffff") .. choice.short .. "|r" end
+  end
+  return tostring(q)
+end
+
+local filterButton
+local function lootFilter()
+  local f = CreateFrame("Button", nil, frame)
+  f:SetHeight(18)
+  f.text = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  f.text:SetPoint("RIGHT")
+  local hl = f:CreateTexture(nil, "HIGHLIGHT")
+  hl:SetAllPoints()
+  hl:SetColorTexture(1, 0.82, 0, 0.12)
+  f:SetScript("OnClick", function()
+    CB.db.lootMinQuality = CB:NextLootQuality()
+    if frame.run then CB:OpenSummary(frame.run) end
+  end)
+  f:SetScript("OnEnter", function(self)
+    if GameTooltip then
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
+      GameTooltip:SetText("Click to show green, blue or purple items and better.")
+      GameTooltip:Show()
+    end
+  end)
+  f:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  filterButton = f
+  CB.summaryFilter = f
+  return f
+end
+
 -- The item's icon, by item ID, so it also works for items the game has not cached yet.
 local function itemIcon(link)
   local icon
@@ -479,10 +537,33 @@ function CB:OpenSummary(run)
   end
 
   local loot = self:SummaryLoot(run)
-  if #loot > 0 then
+  if filterButton then filterButton:Hide() end
+  if self:SummaryHasLoot(run) then
     nh = nh + 1
-    placeHeader(sectionHeader(nh), "Loot", y)
+    local h = sectionHeader(nh)
+    placeHeader(h, "Loot", y)
+    -- a filter on the right of the header: click to show green, blue or purple and up
+    local f = filterButton or lootFilter()
+    f.text:SetText("Show: " .. qualityLabel(self.db.lootMinQuality))
+    f:SetWidth(f.text:GetStringWidth() + 8)
+    f:ClearAllPoints()
+    f:SetPoint("RIGHT", frame, "TOPRIGHT", -PAD, y - 8)
+    f:Show()
+    h.right:ClearAllPoints()
+    h.right:SetPoint("LEFT", h, "RIGHT", 8, 0)
+    h.right:SetPoint("RIGHT", f, "LEFT", -8, 0)
     y = y - 24
+    if #loot == 0 then
+      local r = lootRow(1)
+      r.itemLink = nil
+      r.icon:SetTexture(nil)
+      r.link:SetText("")
+      r.info:SetText("No " .. qualityLabel(self.db.lootMinQuality) .. " items in this run.")
+      r:ClearAllPoints()
+      r:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, y)
+      r:Show()
+      y = y - 24
+    end
     for i, row in ipairs(loot) do
       if i > MAX_LOOT then break end
       local r = lootRow(i)

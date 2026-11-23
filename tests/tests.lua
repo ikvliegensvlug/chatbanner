@@ -621,6 +621,33 @@ test("leaving a dungeon opens the scoreboard with portraits", function()
   MeterSessions = {}
 end)
 
+test("the loot list puts the best first and its filter cycles green, blue, purple", function()
+  local PURPLE = "|cffa335ee|Hitem:11684::::::::|h[Ironfoe]|h|r"
+  local run = { name = "Deadmines", duration = 60, rolls = {},
+    items = { { who = "Aztek", link = GREEN, q = 2 }, { who = "Bram", link = BLUE, q = 3 }, { who = "Lisa", link = PURPLE, q = 4 } } }
+  CB.db.lootMinQuality = 2
+  local rows = CB:SummaryLoot(run)
+  check(#rows == 3 and rows[1].link == PURPLE and rows[3].link == GREEN, "best first")
+  check(rows[1].text == "looted by Lisa", "no roll: looted, got " .. rows[1].text)
+  CB:OpenSummary(run)
+  local f = CB.summaryFilter
+  check(f and f.shown and f.text.text:find("green or better", 1, true), "filter shows the choice")
+  f:Click()
+  check(CB.db.lootMinQuality == 3 and f.text.text:find("blue or better", 1, true), "click: blue")
+  f:Click(); f:Click()
+  check(CB.db.lootMinQuality == 2, "and around to green")
+  CB.db.lootMinQuality = 4
+  run.items = { run.items[1] }
+  CB:OpenSummary(run)
+  local empty = false
+  for _, r in ipairs(AllFrames) do
+    local info = rawget(r, "info"); if r.parent == summary() and info and r.shown and info.text:find("^No ") then empty = true end
+  end
+  check(f.shown and empty, "filter stays, with a note that nothing matches")
+  CB.db.lootMinQuality = 3
+  closeSummary()
+end)
+
 test("/chatbanner summary test shows a sample with your name", function()
   SlashCmdList.CHATBANNER("summary test")
   local f = summary()
