@@ -598,8 +598,7 @@ test("/chatbanner summary test shows a sample with your name", function()
       emblem = c.classIcon
     end
   end
-  check(emblem and emblem.texture:find("UI%-CHARACTERCREATE%-CLASSES") and emblem.texCoord[1] == 0,
-    "players outside your group get their class emblem")
+  check(emblem and emblem.atlas == "classicon-warrior", "players outside your group get their round class icon")
   closeSummary()
 end)
 

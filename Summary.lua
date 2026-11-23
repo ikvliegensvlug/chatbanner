@@ -166,8 +166,15 @@ local function unitFor(name)
   end
 end
 
+-- Make a texture round with a mask texture (the old Texture:SetMask does
+-- nothing on this client). No tex coords on masked textures.
 local function round(tex)
-  if tex.SetMask then tex:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask") end
+  local parent = tex:GetParent()
+  if not (parent and parent.CreateMaskTexture and tex.AddMaskTexture) then return end
+  local mask = parent:CreateMaskTexture()
+  mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+  mask:SetAllPoints(tex)
+  tex:AddMaskTexture(mask)
 end
 
 -- The player's face while they are in the group; otherwise their class emblem.
@@ -181,13 +188,13 @@ local function setPortrait(c, name, class, isMe)
     return
   end
   c.portrait:Hide()
-  local coords = class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
-  if coords then
-    c.classIcon:SetTexture("Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES")
-    c.classIcon:SetTexCoord(unpack(coords))
+  -- the game's own round class icon ("classicon-druid"), else a question mark
+  local atlas = class and ("classicon-" .. class:lower())
+  local hasAtlas = atlas and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas)
+  if hasAtlas and c.classIcon.SetAtlas then
+    c.classIcon:SetAtlas(atlas)
   else
     c.classIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-    c.classIcon:SetTexCoord(0, 1, 0, 1)
   end
   c.classIcon:Show()
 end

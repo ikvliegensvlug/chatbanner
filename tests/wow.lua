@@ -77,6 +77,10 @@ function Methods:SetTexture(t) self.texture = t end
 function Methods:SetTextColor(r, g, b) self.color = { r, g, b } end
 function Methods:IsObjectType(t) return self.kind == t end
 function Methods:CreateTexture() return newObj("Texture", nil, self) end
+function Methods:CreateMaskTexture() return newObj("MaskTexture", nil, self) end
+function Methods:GetParent() return self.parent end
+function Methods:AddMaskTexture(m) self.mask = m end
+function Methods:SetAtlas(a) self.atlas = a end
 function Methods:CreateFontString() return newObj("FontString", nil, self) end
 function Methods:RegisterEvent(e)
   events[e] = events[e] or {}
@@ -125,6 +129,7 @@ Sent = {}
 function SendChatMessage(msg, channel) Sent[#Sent + 1] = channel .. ":" .. msg end
 Portraits = {}
 function SetPortraitTexture(tex, unit) tex.portraitUnit = unit; Portraits[#Portraits + 1] = unit end
+C_Texture = { GetAtlasInfo = function(a) if a:find("^classicon%-") then return { width = 64 } end end }
 function GetItemIcon() return "Interface/Icons/INV_Sword_04" end
 Now = 100000
 function time() return Now end
