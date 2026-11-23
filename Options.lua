@@ -4,7 +4,6 @@ local CB = ns.CB
 
 local panel, content
 local widgets = {}
-local dropdownCount = 0
 
 local COL1, COL2 = 16, 300      -- left edges of the two columns
 local SLIDER_W = 250
@@ -98,40 +97,54 @@ local function dropdown(label, x, y, options, get, set)
     return options[1].label
   end
 
-  if not UIDropDownMenu_Initialize then
-    -- fallback: a button that cycles through the choices
-    local b = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
-    b:SetSize(SLIDER_W, 24)
-    b:SetPoint("TOPLEFT", x, y - 18)
-    b:SetScript("OnClick", function()
-      local i = 1
-      for n, o in ipairs(options) do if o.key == get() then i = n end end
-      set(options[i % #options + 1].key)
+  -- Our own small menu, not Blizzard's UIDropDownMenu: that one shares global
+  -- state with the game's own menus (right-click on a player, invites), and an
+  -- add-on touching it gets blamed when the game later does a protected action.
+  local b = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+  b:SetSize(SLIDER_W, 24)
+  b:SetPoint("TOPLEFT", x, y - 18)
+  local arrow = b:CreateTexture(nil, "OVERLAY")
+  arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+  arrow:SetSize(20, 20)
+  arrow:SetPoint("RIGHT", -2, 0)
+
+  local list = CreateFrame("Frame", nil, b, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  list:SetPoint("TOPLEFT", b, "BOTTOMLEFT", 0, -2)
+  list:SetSize(SLIDER_W, #options * 20 + 8)
+  list:SetFrameStrata("FULLSCREEN_DIALOG")
+  if list.SetBackdrop then
+    list:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    list:SetBackdropColor(0.05, 0.05, 0.06, 0.98)
+    list:SetBackdropBorderColor(1, 1, 1, 0.25)
+  end
+  list:Hide()
+  b.list = list
+  b.items = {}
+  for i, o in ipairs(options) do
+    local item = CreateFrame("Button", nil, list)
+    item:SetSize(SLIDER_W - 8, 20)
+    item:SetPoint("TOPLEFT", 4, -4 - (i - 1) * 20)
+    item:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+    item.label = item:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    item.label:SetPoint("LEFT", 6, 0)
+    item.label:SetText(o.label)
+    item:SetScript("OnClick", function()
+      set(o.key)
+      list:Hide()
       b.Refresh()
     end)
-    b.Refresh = function() b:SetText(labelOf(get())) end
-    return add(b)
+    b.items[i] = item
   end
 
-  dropdownCount = dropdownCount + 1
-  local dd = CreateFrame("Frame", "ChatBannerDropdown" .. dropdownCount, content, "UIDropDownMenuTemplate")
-  dd:SetPoint("TOPLEFT", x - 16, y - 16)
-  UIDropDownMenu_SetWidth(dd, SLIDER_W - 30)
-  UIDropDownMenu_Initialize(dd, function(_, level)
-    for _, o in ipairs(options) do
-      local info = UIDropDownMenu_CreateInfo()
-      info.text = o.label
-      info.checked = (get() == o.key)
-      info.func = function()
-        set(o.key)
-        UIDropDownMenu_SetText(dd, o.label)
-        CloseDropDownMenus()
-      end
-      UIDropDownMenu_AddButton(info, level)
+  b:SetScript("OnClick", function() list:SetShown(not list:IsShown()) end)
+  b:SetScript("OnHide", function() list:Hide() end)
+  b.Refresh = function()
+    b:SetText(labelOf(get()))
+    for i, o in ipairs(options) do
+      b.items[i].label:SetTextColor(1, o.key == get() and 0.82 or 1, o.key == get() and 0 or 1)
     end
-  end)
-  dd.Refresh = function() UIDropDownMenu_SetText(dd, labelOf(get())) end
-  return add(dd)
+  end
+  return add(b)
 end
 
 local function button(text, x, y, width, onClick)

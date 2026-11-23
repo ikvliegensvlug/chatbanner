@@ -95,6 +95,7 @@ CB.Merge = merge
 -- What changed per version, shown once in chat after an update (newest first).
 CB.NEWS = {
   { version = "1.0.6", notes = {
+    "Fixed: 'ChatBanner has been blocked from an action only available to the Blizzard UI' (for example with party invites). The options no longer use Blizzard's shared dropdown menus.",
     "Dungeon scoreboard: when you leave a dungeon or raid, a window shows who did the most damage, healing and buffing, who took the most damage, the records, the bad luck and the loot, with each player's portrait. Post to party shares it. /chatbanner summary opens it again.",
     "Need rolls: an alert when someone selects Need on an item, and the winner's roll with the result.",
   } },

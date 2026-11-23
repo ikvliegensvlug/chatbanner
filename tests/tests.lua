@@ -586,17 +586,29 @@ test("the options choose the lowest quality in the loot summary", function()
   CB:RefreshOptions()
   local dd
   for _, f in ipairs(AllFrames) do
-    if f.init and f.text == "Blue (rare) and better" then dd = f end
+    if rawget(f, "list") and f.text == "Blue (rare) and better" then dd = f end
   end
   check(dd, "dropdown shown with blue as default")
-  local added = {}
-  local real = UIDropDownMenu_AddButton
-  UIDropDownMenu_AddButton = function(info) added[#added + 1] = info end
-  dd.init(dd, 1)
-  UIDropDownMenu_AddButton = real
-  check(#added == 3, "green, blue and purple")
-  added[1].func()
+  check(not dd.list.shown, "menu closed at first")
+  dd:Click()
+  check(dd.list.shown and #dd.items == 3, "menu with green, blue and purple")
+  dd.items[1]:Click()
   check(CB.db.lootMinQuality == 2 and dd.text == "Green (uncommon) and better", "green chosen")
+  check(not dd.list.shown, "menu closes after a choice")
+end)
+
+test("the options never touch Blizzard's shared dropdown menus", function()
+  -- UIDropDownMenu shares global state with the game's own menus; using it
+  -- got ChatBanner blamed for blocked actions (party invites, player menus)
+  local used = false
+  for _, f in ipairs(AllFrames) do
+    if f.template == "UIDropDownMenuTemplate" then used = true end
+  end
+  check(not used, "no UIDropDownMenuTemplate frames")
+  for _, file in ipairs(TOC_FILES) do
+    local src = readfile(ROOT .. "/" .. file)
+    check(not src:find("UIDropDownMenu_", 1, true) and not src:find("CloseDropDownMenus", 1, true), file .. " uses UIDropDownMenu")
+  end
 end)
 
 test("dying and running back does not end the dungeon", function()
