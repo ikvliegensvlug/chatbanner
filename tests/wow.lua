@@ -96,7 +96,8 @@ function Fire(event, ...)
 end
 
 -- game state
-function InCombatLockdown() return false end
+InCombat = false
+function InCombatLockdown() return InCombat end
 -- the group: GroupNames["party1"] = "Bram", GroupClasses["Bram"] = "WARRIOR"
 GroupNames, GroupClasses = {}, { Aztek = "DRUID" }
 function UnitName(unit)
@@ -121,9 +122,23 @@ function GetItemIcon() return "Interface/Icons/INV_Sword_04" end
 Now = 100000
 function time() return Now end
 bit = { band = load("return function(a, b) return a & b end")() }
--- combat log: fill CombatEvent, then Fire("COMBAT_LOG_EVENT_UNFILTERED")
-CombatEvent = {}
-function CombatLogGetCurrentEventInfo() return unpack(CombatEvent, 1, CombatEvent.n or #CombatEvent) end
+-- the game's damage meter: MeterSessions = { { id = 1, duration = 60, [0] = { sources... }, ... } }
+-- keyed by Enum.DamageMeterType (0 damage, 2 healing, 7 taken, 9 deaths)
+MeterSessions = {}
+SecretValues = false
+function issecretvalue() return SecretValues end
+C_DamageMeter = {
+  GetAvailableCombatSessions = function()
+    local out = {}
+    for _, s in ipairs(MeterSessions) do out[#out + 1] = { sessionID = s.id, name = "Fight", durationSeconds = s.duration } end
+    return out
+  end,
+  GetCombatSessionFromID = function(id, kind)
+    for _, s in ipairs(MeterSessions) do
+      if s.id == id then return { combatSources = s[kind] or {}, durationSeconds = s.duration } end
+    end
+  end,
+}
 CLASS_ICON_TCOORDS = { DRUID = { 0.75, 1, 0, 0.25 }, WARRIOR = { 0, 0.25, 0, 0.25 } }
 RAID_CLASS_COLORS = { DRUID = { r = 1, g = 0.49, b = 0.04 }, WARRIOR = { r = 0.78, g = 0.61, b = 0.43 } }
 function Ambiguate(name) return (name:gsub("%-.*$", "")) end

@@ -130,8 +130,15 @@ end
 function CB:FinishLootRun()
   local run = self.db.lootRun
   if not run then return end
+  -- the damage meter's numbers are secret during combat: finish once it is over
+  if InCombatLockdown and InCombatLockdown() then
+    self.finishAfterCombat = true
+    return
+  end
+  self.finishAfterCombat = nil
   self.db.lootRun = nil
   run.duration = (time and run.start and (time() - run.start)) or 0
+  if self.CollectStats then pcall(self.CollectStats, self, run) end
   if #run.items > 0 or (self.HasStats and self:HasStats(run)) then
     self.db.lastLoot = run
     if self.db.lootSummary and self.OpenSummary then self:OpenSummary(run) end
@@ -144,7 +151,11 @@ function CB:CheckLootRun()
   local run = self.db.lootRun
   if name then
     if run and run.name ~= name then self:FinishLootRun(); run = nil end
-    if not run then self.db.lootRun = { name = name, items = {}, rolls = {}, start = time and time() or 0 } end
+    if not run then
+      run = { name = name, items = {}, rolls = {}, start = time and time() or 0 }
+      self.db.lootRun = run
+      if self.StartStats then self:StartStats(run) end
+    end
   elseif run then
     -- a ghost running back from the graveyard has not finished the dungeon yet
     if UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") then return end
@@ -201,13 +212,15 @@ end
 
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_ALIVE",
-                     "PLAYER_UNGHOST", "CHAT_MSG_LOOT" }) do
+                     "PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED", "CHAT_MSG_LOOT" }) do
   pcall(ev.RegisterEvent, ev, e)
 end
 ev:SetScript("OnEvent", function(_, event, text)
   if not CB.db then return end
   if event == "CHAT_MSG_LOOT" then
     CB:NoteLoot(text)
+  elseif event == "PLAYER_REGEN_ENABLED" then
+    if CB.finishAfterCombat then CB:FinishLootRun() end
   else
     CB:CheckLootRun()
   end

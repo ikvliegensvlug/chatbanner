@@ -36,9 +36,11 @@ local function top(stats, field)
   return bestName, best
 end
 
-local ORANGE, GREEN, BLUE, WHITE = { 1, 0.54, 0.24 }, { 0.3, 0.9, 0.3 }, { 0.35, 0.66, 1 }, { 1, 1, 1 }
+local ORANGE, GREEN, WHITE = { 1, 0.54, 0.24 }, { 0.3, 0.9, 0.3 }, { 1, 1, 1 }
 
--- Every category: where it goes, its icon and how to find the winner.
+-- Every category: where it goes, its icon and how to find the winner. Only what
+-- the game's damage meter offers: add-ons can no longer read the combat log, so
+-- buffs, killing blows and single-hit records are not available.
 local CATEGORIES = {
   { section = "Heroes of the run", title = "Most damage", icon = "Ability_MeleeDamage", color = ORANGE,
     pick = function(s)
@@ -50,23 +52,13 @@ local CATEGORIES = {
     end },
   { section = "Heroes of the run", title = "Most healing", icon = "Spell_Holy_Heal", color = GREEN,
     pick = function(s) return top(s, "heal") end },
-  { section = "Heroes of the run", title = "Most buffs given", icon = "Spell_Holy_WordFortitude", color = BLUE,
-    pick = function(s) local who, v = top(s, "buffs"); return who, v, "buffs" end },
   { section = "Heroes of the run", title = "Most damage taken", icon = "INV_Shield_06", color = WHITE,
     pick = function(s) return top(s, "taken") end },
-  { section = "Records", title = "Highest hit", icon = "Ability_Rogue_Eviscerate", color = ORANGE,
-    pick = function(s) local r = s.rec.hit; if r then return r.who, r.amount, r.what end end },
-  { section = "Records", title = "Biggest heal", icon = "Spell_Holy_FlashHeal", color = GREEN,
-    pick = function(s) local r = s.rec.heal; if r then return r.who, r.amount, r.what end end },
-  { section = "Records", title = "Killing blows", icon = "INV_Misc_Bone_HumanSkull_01", color = ORANGE,
-    pick = function(s) return top(s, "kb") end },
   { section = "Bad luck", title = "Died most", icon = "Ability_Rogue_FeignDeath", color = WHITE,
     pick = function(s)
       local who, v = top(s, "deaths")
       return who, v, v and (v == 1 and "time" or "times") or nil
     end },
-  { section = "Bad luck", title = "Biggest hit taken", icon = "Ability_Druid_Rake", color = WHITE,
-    pick = function(s) local r = s.rec.taken; if r then return r.who, r.amount, r.what end end },
 }
 CB.SUMMARY_CATEGORIES = CATEGORIES
 

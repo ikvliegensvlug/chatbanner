@@ -417,17 +417,6 @@ end
 local summary = function() return _G.ChatBannerSummary end
 local function closeSummary() if summary() then summary():Hide() end end
 
--- combat log flags as the game sends them
-local ME, MATE, ENEMY, MYPET = 0x401, 0x402, 0x848, 0x1001
-local ts = 5000
-local function combat(sub, src, srcFlags, dst, dstFlags, ...)
-  ts = ts + 1
-  CombatEvent = { ts, sub, false, src and ("G-" .. src), src, srcFlags or 0, 0,
-                  dst and ("G-" .. dst), dst, dstFlags or 0, 0, ... }
-  CombatEvent.n = 11 + select("#", ...)
-  Fire("COMBAT_LOG_EVENT_UNFILTERED")
-end
-
 test("loot lines are read with who got which item", function()
   local who, link = CB.ParseLoot("Bram-Realm receives loot: " .. BLUE .. ".")
   check(who == "Bram-Realm" and link == BLUE, "someone else")
@@ -470,51 +459,79 @@ test("the winner's roll shows on the result alert and in the summary", function(
   closeSummary()
 end)
 
-test("the combat log counts damage, healing, buffs and more per player", function()
-  GroupNames.party1 = "Bram"; GroupClasses.Bram = "WARRIOR"
+-- the game's damage meter: one session per fight
+local function fight(id, duration, data)
+  local s = { id = id, duration = duration }
+  local kinds = { dmg = 0, heal = 2, taken = 7, deaths = 9 }
+  for field, rows in pairs(data) do
+    local list = {}
+    for _, r in ipairs(rows) do
+      list[#list + 1] = { name = r[1], totalAmount = r[2], classFilename = r[3], sourceDisplayType = r[4] }
+    end
+    s[kinds[field]] = list
+  end
+  MeterSessions[#MeterSessions + 1] = s
+end
+
+test("the scoreboard never registers for the combat log", function()
+  -- this client blocks add-ons that register for it ("has been blocked from an action")
+  for _, file in ipairs(TOC_FILES) do
+    local src = readfile(ROOT .. "/" .. file)
+    check(not src:find("COMBAT_LOG_EVENT", 1, true), file .. " mentions the combat log event")
+  end
+end)
+
+test("the damage meter's fights since entering are added up per player", function()
+  MeterSessions = {}
+  fight(1, 30, { dmg = { { "Aztek", 999, "DRUID" } } })        -- before the dungeon
   enterDungeon("Wailing Caverns")
-  combat("SWING_DAMAGE", "Aztek", ME, "Kobold", ENEMY, 300)
-  combat("SPELL_DAMAGE", "Aztek", ME, "Kobold", ENEMY, 1, "Ferocious Bite", 1, 912)
-  combat("SPELL_DAMAGE", "Wolf", MYPET, "Kobold", ENEMY, 2, "Bite", 1, 100)
-  combat("SPELL_DAMAGE", "Bram", MATE, "Kobold", ENEMY, 3, "Heroic Strike", 1, 400)
-  combat("SPELL_DAMAGE", "Kobold", ENEMY, "Bram", MATE, 4, "Thrash", 1, 250)
-  combat("SWING_DAMAGE", "Mutanus", ENEMY, "Bram", MATE, 1840)
-  combat("SPELL_HEAL", "Aztek", ME, "Bram", MATE, 5, "Healing Touch", 8, 1000, 200)
-  combat("SPELL_AURA_APPLIED", "Aztek", ME, "Bram", MATE, 6, "Mark of the Wild", 8, "BUFF")
-  combat("SPELL_AURA_APPLIED", "Aztek", ME, "Aztek", ME, 7, "Cat Form", 1, "BUFF")
-  combat("SPELL_AURA_APPLIED", "Kobold", ENEMY, "Kobold", ENEMY, 8, "Enrage", 1, "BUFF")
-  combat("PARTY_KILL", "Aztek", ME, "Kobold", ENEMY)
-  combat("UNIT_DIED", nil, 0, "Kobold", ENEMY)
-  combat("UNIT_DIED", nil, 0, "Bram", MATE)
-  local s = CB.db.lootRun.stats
-  local a, b = s.players.Aztek, s.players.Bram
-  check(a.dmg == 1312, "Aztek's damage with the pet, got " .. a.dmg)
-  check(b.dmg == 400 and b.taken == 2090, "Bram dealt 400 and took 2090")
-  check(a.heal == 800, "healing without overheal, got " .. a.heal)
-  check(a.buffs == 1, "only buffs on someone else count, got " .. a.buffs)
-  check(a.kb == 1 and s.kills == 1 and b.deaths == 1, "kills and deaths")
-  check(s.rec.hit.who == "Aztek" and s.rec.hit.amount == 912 and s.rec.hit.what == "Ferocious Bite", "highest hit")
-  check(s.rec.heal.amount == 800 and s.rec.taken.amount == 1840 and s.rec.taken.what == "Mutanus",
-    "biggest heal and hit taken")
-  check(a.class == "DRUID" and b.class == "WARRIOR", "classes noted")
+  check(CB.db.lootRun.statsFrom == 1, "starts after the newest fight")
+  fight(2, 40, { dmg = { { "Aztek-Realm", 1000, "DRUID" }, { "Bram", 400, "WARRIOR" }, { "Kobold", 5000, nil, 2 } },
+                 heal = { { "Aztek", 800, "DRUID" } },
+                 taken = { { "Bram", 2090, "WARRIOR" } } })
+  fight(3, 20, { dmg = { { "Aztek", 312, "DRUID" } }, deaths = { { "Bram", 1, "WARRIOR" } } })
+  local run = CB.db.lootRun
   leaveDungeon()
   closeSummary()
-  GroupNames.party1 = nil
+  local s = run.stats
+  local a, b = s.players.Aztek, s.players.Bram
+  check(a.dmg == 1312, "Aztek's damage without the fight before, got " .. a.dmg)
+  check(a.active == 60, "active time from his fights, got " .. a.active)
+  check(b.dmg == 400 and b.taken == 2090 and b.deaths == 1, "Bram's numbers")
+  check(a.heal == 800, "healing")
+  check(not s.players.Kobold, "enemies left out")
+  check(a.class == "DRUID" and b.class == "WARRIOR", "classes from the meter")
+  MeterSessions = {}
+end)
+
+test("secret numbers are skipped, and combat delays the end", function()
+  MeterSessions = {}
+  enterDungeon("Deadmines")
+  fight(1, 40, { dmg = { { "Aztek", 1000, "DRUID" } } })
+  InCombat = true
+  leaveDungeon()
+  check(CB.db.lootRun and not (summary() and summary().shown), "waits while in combat")
+  InCombat = false
+  SecretValues = true
+  Fire("PLAYER_REGEN_ENABLED")
+  check(CB.db.lootRun == nil, "finished after combat")
+  check(not (summary() and summary().shown), "no numbers readable, nothing to show")
+  SecretValues = false
+  MeterSessions = {}
 end)
 
 test("nothing is counted outside a dungeon", function()
   IsInInstance = function() return false, "none" end
   Fire("PLAYER_ENTERING_WORLD")
-  combat("SWING_DAMAGE", "Aztek", ME, "Kobold", ENEMY, 300)
   check(CB.db.lootRun == nil, "no run")
 end)
 
 test("leaving a dungeon opens the scoreboard with portraits", function()
   GroupNames.party1 = "Bram"; GroupClasses.Bram = "WARRIOR"
   CB.db.lootMinQuality = 2
+  MeterSessions = {}
   enterDungeon("Wailing Caverns")
-  combat("SPELL_DAMAGE", "Aztek", ME, "Kobold", ENEMY, 1, "Ferocious Bite", 1, 912)
-  combat("SWING_DAMAGE", "Kobold", ENEMY, "Bram", MATE, 50)
+  fight(1, 60, { dmg = { { "Aztek", 48213, "DRUID" } }, taken = { { "Bram", 50, "WARRIOR" } } })
   Fire("CHAT_MSG_LOOT", "Bram receives loot: " .. BLUE .. ".")
   Fire("CHAT_MSG_LOOT", "Lisa receives loot: " .. GREEN .. ".")
   Fire("CHAT_MSG_LOOT", "Bram receives loot: |cff9d9d9d|Hitem:1::::::::|h[Broken Fang]|h|r.")
@@ -530,8 +547,7 @@ test("leaving a dungeon opens the scoreboard with portraits", function()
     if c.parent == f and rawget(c, "badge") and c.shown then titles[#titles + 1] = c.title.text end
   end
   local all = table.concat(titles, ",")
-  check(all:find("Most damage", 1, true) and all:find("Highest hit", 1, true) and all:find("Most damage taken", 1, true),
-    "cards with data, got " .. all)
+  check(all:find("Most damage", 1, true) and all:find("Most damage taken", 1, true), "cards with data, got " .. all)
   check(not all:find("Most healing", 1, true) and not all:find("Died most", 1, true), "empty categories left out")
   check(#Portraits >= 1 and Portraits[1] == "player", "your own face as portrait")
   local rows = 0
@@ -554,7 +570,7 @@ test("leaving a dungeon opens the scoreboard with portraits", function()
   CB:PostSummary(run)
   check(#Sent >= 2 and Sent[1]:find("^PARTY:ChatBanner: Wailing Caverns %(38:12"), "header line, got " .. tostring(Sent[1]))
   local text = table.concat(Sent, "\n")
-  check(text:find("Highest hit: Aztek 912 (Ferocious Bite)", 1, true), "categories posted")
+  check(text:find("Most damage: Aztek 48.2k (804 DPS)", 1, true), "categories posted, got " .. text)
   check(text:find("[Archeus]", 1, true), "loot posted")
   for _, line in ipairs(Sent) do check(#line - 6 <= 255, "lines fit in chat") end
   InRaid = true
@@ -562,6 +578,7 @@ test("leaving a dungeon opens the scoreboard with portraits", function()
   CB:PostSummary(run)
   check(Sent[1]:find("^RAID:"), "raid chat in a raid")
   InGroup, InRaid = false, false
+  MeterSessions = {}
 end)
 
 test("/chatbanner summary test shows a sample with your name", function()
@@ -572,7 +589,7 @@ test("/chatbanner summary test shows a sample with your name", function()
   for _, c in ipairs(AllFrames) do
     if c.parent == f and rawget(c, "badge") and c.shown then names[#names + 1] = c.name.text end
   end
-  check(#names == 9, "all nine categories, got " .. #names)
+  check(#names == #CB.SUMMARY_CATEGORIES, "every category, got " .. #names)
   check(table.concat(names, ","):find("Aztek", 1, true), "you are in it")
   closeSummary()
 end)
