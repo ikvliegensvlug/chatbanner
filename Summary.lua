@@ -415,7 +415,8 @@ end
 
 function CB:OpenSummary(run)
   if not run then
-    self:Print("No dungeon summary yet. It appears when you leave a dungeon or raid.")
+    self:Print("No dungeon summary yet. It appears when you leave a dungeon or raid; "
+      .. "|cffffd100/chatbanner summary test|r shows a sample.")
     return false
   end
   if not frame then build() end
