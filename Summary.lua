@@ -78,7 +78,7 @@ function CB:SummaryCards(run)
       end
       local p = stats.players[who]
       sec.cards[#sec.cards + 1] = { cat = c, who = who, value = value, text = num(value), sub = sub,
-                                    class = p and p.class }
+                                    class = p and p.class, isMe = p and p.isMe }
     end
   end
   return sections
@@ -170,10 +170,10 @@ local function round(tex)
   if tex.SetMask then tex:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask") end
 end
 
--- The player's face while they are in the group; otherwise their round class icon.
--- No tex coords anywhere: the game refuses them on a texture with a mask.
-local function setPortrait(c, name, class)
-  local unit = unitFor(name)
+-- The player's face while they are in the group; otherwise their class emblem.
+-- The emblem texture has no mask (the game refuses tex coords on masked textures).
+local function setPortrait(c, name, class, isMe)
+  local unit = isMe and "player" or unitFor(name)
   if unit and SetPortraitTexture then
     SetPortraitTexture(c.portrait, unit)   -- already round
     c.portrait:Show()
@@ -181,11 +181,13 @@ local function setPortrait(c, name, class)
     return
   end
   c.portrait:Hide()
-  if class and class ~= "" then
-    -- "DRUID" -> Interface\Icons\ClassIcon_Druid
-    c.classIcon:SetTexture("Interface\\Icons\\ClassIcon_" .. class:sub(1, 1) .. class:sub(2):lower())
+  local coords = class and CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
+  if coords then
+    c.classIcon:SetTexture("Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES")
+    c.classIcon:SetTexCoord(unpack(coords))
   else
     c.classIcon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+    c.classIcon:SetTexCoord(0, 1, 0, 1)
   end
   c.classIcon:Show()
 end
@@ -208,7 +210,9 @@ local function makeCard()
   c.ring = c:CreateTexture(nil, "BORDER")
   c.ring:SetSize(54, 54)
   c.ring:SetPoint("LEFT", 4, 0)
-  c.ring:SetColorTexture(0.72, 0.57, 0.24, 1)
+  -- a file texture with a colour, not SetColorTexture: a mask only rounds file textures
+  c.ring:SetTexture("Interface\\Buttons\\WHITE8X8")
+  c.ring:SetVertexColor(0.72, 0.57, 0.24, 1)
   round(c.ring)
   c.portrait = c:CreateTexture(nil, "ARTWORK")
   c.portrait:SetSize(48, 48)
@@ -216,12 +220,12 @@ local function makeCard()
   c.classIcon = c:CreateTexture(nil, "ARTWORK")
   c.classIcon:SetSize(48, 48)
   c.classIcon:SetPoint("CENTER", c.ring, "CENTER")
-  round(c.classIcon)
   -- category icon where a unit frame shows the level
   c.badgeRing = c:CreateTexture(nil, "OVERLAY", nil, 1)
   c.badgeRing:SetSize(26, 26)
   c.badgeRing:SetPoint("CENTER", c.ring, "BOTTOMLEFT", 9, 9)
-  c.badgeRing:SetColorTexture(0.72, 0.57, 0.24, 1)
+  c.badgeRing:SetTexture("Interface\\Buttons\\WHITE8X8")
+  c.badgeRing:SetVertexColor(0.72, 0.57, 0.24, 1)
   round(c.badgeRing)
   c.badge = c:CreateTexture(nil, "OVERLAY", nil, 2)
   c.badge:SetSize(22, 22)
@@ -245,7 +249,7 @@ end
 local function fillCard(c, card)
   local cat = card.cat
   c.badge:SetTexture("Interface\\Icons\\" .. cat.icon)
-  setPortrait(c, card.who, card.class)
+  setPortrait(c, card.who, card.class, card.isMe)
   c.title:SetText(cat.title)
   c.name:SetText(card.who)
   c.name:SetTextColor(classColor(card.class))
@@ -382,6 +386,15 @@ end
 
 local MAX_LOOT = 8
 
+-- The item's icon, by item ID, so it also works for items the game has not cached yet.
+local function itemIcon(link)
+  local icon
+  local id = tonumber(link:match("item:(%d+)"))
+  if id and C_Item and C_Item.GetItemIconByID then icon = C_Item.GetItemIconByID(id) end
+  if not icon and GetItemIcon then icon = GetItemIcon(link) end
+  return icon or "Interface\\Icons\\INV_Misc_QuestionMark"
+end
+
 -- A made-up run with you and your group, to see the scoreboard without a dungeon.
 function CB:SampleRun()
   local names = {}
@@ -398,7 +411,7 @@ function CB:SampleRun()
   p(b, { dmg = 21000, heal = 0, buffs = 2, taken = 52004, kb = 9, deaths = 1 })
   p(c, { dmg = 3100, heal = 31540, buffs = 27, taken = 7200, kb = 1, deaths = 0 })
   p(d, { dmg = 30500, heal = 0, buffs = 0, taken = 11800, kb = 14, deaths = 3 })
-  local link = "|cffa335ee|Hitem:2100::::::::|h[Ironfoe]|h|r"
+  local link = "|cffa335ee|Hitem:11684::::::::|h[Ironfoe]|h|r"
   local cloak = "|cff0070dd|Hitem:6449::::::::|h[Glowing Lizardscale Cloak]|h|r"
   return {
     name = "Wailing Caverns (sample)", duration = 38 * 60 + 12,
@@ -456,7 +469,7 @@ function CB:OpenSummary(run)
       if i > MAX_LOOT then break end
       local r = lootRow(i)
       r.itemLink = row.link
-      r.icon:SetTexture((GetItemIcon and GetItemIcon(row.link)) or "Interface\\Icons\\INV_Misc_QuestionMark")
+      r.icon:SetTexture(itemIcon(row.link))
       r.link:SetText(row.link)
       r.info:SetText(row.text)
       r:ClearAllPoints()

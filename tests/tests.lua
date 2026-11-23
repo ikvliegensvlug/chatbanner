@@ -466,7 +466,8 @@ local function fight(id, duration, data)
   for field, rows in pairs(data) do
     local list = {}
     for _, r in ipairs(rows) do
-      list[#list + 1] = { name = r[1], totalAmount = r[2], classFilename = r[3], sourceDisplayType = r[4] }
+      list[#list + 1] = { name = r[1], totalAmount = r[2], classFilename = r[3], sourceDisplayType = r[4],
+                          isLocalPlayer = r[5] }
     end
     s[kinds[field]] = list
   end
@@ -591,12 +592,26 @@ test("/chatbanner summary test shows a sample with your name", function()
   end
   check(#names == #CB.SUMMARY_CATEGORIES, "every category, got " .. #names)
   check(table.concat(names, ","):find("Aztek", 1, true), "you are in it")
-  local icons = {}
+  local emblem
   for _, c in ipairs(AllFrames) do
-    if c.parent == f and rawget(c, "classIcon") and c.shown and c.classIcon.shown then icons[c.classIcon.texture] = true end
+    if c.parent == f and rawget(c, "classIcon") and c.shown and c.classIcon.shown and c.name.text == "Bram" then
+      emblem = c.classIcon
+    end
   end
-  check(icons["Interface\\Icons\\ClassIcon_Warrior"],"players outside your group get their round class icon")
+  check(emblem and emblem.texture:find("UI%-CHARACTERCREATE%-CLASSES") and emblem.texCoord[1] == 0,
+    "players outside your group get their class emblem")
   closeSummary()
+end)
+
+test("your own card shows your face even when the meter names you differently", function()
+  MeterSessions = {}
+  enterDungeon("Wailing Caverns")
+  fight(1, 60, { dmg = { { "Aztek Ensteek", 3135, "DRUID", nil, true } } })
+  Portraits = {}
+  leaveDungeon()
+  check(summary().shown and Portraits[1] == "player", "your portrait, got " .. tostring(Portraits[1]))
+  closeSummary()
+  MeterSessions = {}
 end)
 
 test("numbers and times are short and readable", function()

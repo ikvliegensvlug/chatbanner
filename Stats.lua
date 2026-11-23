@@ -81,6 +81,8 @@ local function addSource(stats, field, src, duration)
     stats.players[name] = p
   end
   if readable(src.classFilename) then p.class = src.classFilename end
+  -- the meter marks you; your name there may not match UnitName exactly
+  if src.isLocalPlayer == true then p.isMe = true end
   p[field] = p[field] + amount
   if field == "dmg" then p.active = p.active + (duration or 0) end
 end

@@ -70,7 +70,7 @@ function Methods:SetScale(s) self.scale = s end
 -- like the game: no tex coords on a texture with a mask
 function Methods:SetMask(m) self.mask = m end
 function Methods:SetTexCoord(...)
-  if self.mask then error("Texture:SetTexCoord(): Cannot set tex coords when texture has mask.", 2) end
+  if rawget(self, "mask") then error("Texture:SetTexCoord(): Cannot set tex coords when texture has mask.", 2) end
   self.texCoord = { ... }
 end
 function Methods:SetTexture(t) self.texture = t end
