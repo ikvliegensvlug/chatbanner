@@ -95,6 +95,12 @@ local function rollText(rollID)
   return link and ("Roll for " .. link) or nil
 end
 
+-- Chat text the game keeps secret from add-ons (in dungeon fights on this client).
+local function isSecret(v)
+  return v ~= nil and issecretvalue ~= nil and issecretvalue(v) and true or false
+end
+CB.IsSecret = isSecret
+
 local holder, mover
 local active, pool = {}, {}
 
@@ -303,7 +309,8 @@ function CB:Show(info, text, sender, extra)
   edgeColor(t.tagBox, r, g, b, 0.9)
   restEdge(t)
 
-  local name = info.reply == "bnet" and sender or shortName(sender)
+  -- a secret sender (see onEvent) can be shown but not shortened
+  local name = (info.reply == "bnet" or isSecret(sender)) and sender or shortName(sender)
   if name and not info.noSender then
     t.msg:SetText("|cffffffff" .. name .. "|r: " .. text)
   else
@@ -361,9 +368,29 @@ local function clean(text, info, sender)
 end
 CB.CleanText = clean
 
+function CB:NoteError(err)
+  self.lastError = tostring(err)
+  if self.db and self.db.debug then
+    local log = self.db.debug.errors or {}
+    self.db.debug.errors = log
+    log[#log + 1] = self.lastError
+    while #log > 10 do table.remove(log, 1) end
+  end
+end
+
 local function onEvent(_, event, ...)
   local info = EVENTS[event]
   if not info then return end
+
+  -- In a dungeon fight the game may hand add-ons "secret" chat text: it can be
+  -- shown, but not read or compared, so no quest check, filters or roll parsing.
+  local first, second = ...
+  if isSecret(first) or isSecret(second) then
+    if info.rollsOnly or event == "CHAT_MSG_SYSTEM" or event == "START_LOOT_ROLL" then return end
+    if not CB.db.sources[info.source] then return end
+    CB:Show(info, first, second)
+    return
+  end
   if event == "CHAT_MSG_SYSTEM" and isQuestProgress((...)) then info = QUEST end
   if not CB.db.sources[info.source] then return end
   if event == "START_LOOT_ROLL" then
@@ -539,5 +566,9 @@ function CB:InitAlerts()
 
   local ev = CreateFrame("Frame")
   for event in pairs(EVENTS) do pcall(ev.RegisterEvent, ev, event) end
-  ev:SetScript("OnEvent", onEvent)
+  -- an error here must never interrupt play: keep it for /chatbanner debug instead
+  ev:SetScript("OnEvent", function(...)
+    local ok, err = pcall(onEvent, ...)
+    if not ok then CB:NoteError(err) end
+  end)
 end

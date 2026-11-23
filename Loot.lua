@@ -196,6 +196,7 @@ end
 function CB:NoteLoot(text)
   local run = self.db.lootRun
   if not run then return end
+  if self.IsSecret and self.IsSecret(text) then return end   -- unreadable during a fight
   local roll = parseRoll(text)
   if roll then
     if roll.link then noteRoll(run, roll) end
@@ -233,7 +234,12 @@ for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_A
                      "PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED", "CHAT_MSG_LOOT" }) do
   pcall(ev.RegisterEvent, ev, e)
 end
-ev:SetScript("OnEvent", function(_, event, text)
+local onEvent
+ev:SetScript("OnEvent", function(...)
+  local ok, err = pcall(onEvent, ...)
+  if not ok and CB.NoteError then CB:NoteError(err) end
+end)
+onEvent = function(_, event, text)
   if not CB.db then return end
   if event == "CHAT_MSG_LOOT" then
     if CB.db.debug then CB:DebugLoot(text) end
@@ -243,4 +249,4 @@ ev:SetScript("OnEvent", function(_, event, text)
   else
     CB:CheckLootRun()
   end
-end)
+end

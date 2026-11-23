@@ -643,6 +643,27 @@ test("/chatbanner debug keeps loot lines and how they were read", function()
   check(CB.db.debug == nil, "off again")
 end)
 
+test("secret chat text in a dungeon fight is shown as is, never read", function()
+  SecretValues = true
+  Fire("CHAT_MSG_PARTY", "heal me", "Bram-Realm")
+  local a = alerts()[1]
+  check(a and msgOf(a):find("heal me", 1, true), "party line shown")
+  Fire("CHAT_MSG_SYSTEM", "Kobold Vermin slain: 3/10")
+  Fire("CHAT_MSG_LOOT", "You receive loot: " .. GREEN .. ".")
+  check(#alerts() == 1, "system and loot lines skipped when secret")
+  SecretValues = false
+  check(CB.lastError == nil, "no errors, got " .. tostring(CB.lastError))
+end)
+
+test("an error while handling chat never reaches the player", function()
+  local real = CB.Show
+  CB.Show = function() error("boom") end
+  Fire("CHAT_MSG_SAY", "hello", "Bram")
+  CB.Show = real
+  check(CB.lastError and CB.lastError:find("boom", 1, true), "error kept, got " .. tostring(CB.lastError))
+  CB.lastError = nil
+end)
+
 test("numbers and times are short and readable", function()
   check(CB.FormatNumber(912) == "912" and CB.FormatNumber(1410) == "1,410" and CB.FormatNumber(48213) == "48.2k", "numbers")
   check(CB.FormatClock(2292) == "38:12" and CB.FormatClock(3725) == "1:02:05", "times")
